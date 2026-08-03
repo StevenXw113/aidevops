@@ -123,7 +123,7 @@ class AIOpsApiTests(TestCase):
     def test_platform_mcp_tools_respect_feature_gate_without_name_error(self):
         tools = list_platform_mcp_tools(user=self.user)
 
-        self.assertTrue(any(item['name'] == 'sxdevops.query_knowledge_graph' for item in tools))
+        self.assertTrue(any(item['name'] == 'aidevops.query_knowledge_graph' for item in tools))
         self.assertTrue(all('available' in item for item in tools))
 
     def ensure_ecommerce_knowledge_environment(self):
@@ -1069,20 +1069,20 @@ class AIOpsApiTests(TestCase):
             'method': 'tools/list',
         }, format='json')
         self.assertEqual(list_response.status_code, 200)
-        self.assertTrue(any(item['name'] == 'sxdevops.query_recent_changes' for item in list_response.data['result']['tools']))
+        self.assertTrue(any(item['name'] == 'aidevops.query_recent_changes' for item in list_response.data['result']['tools']))
 
         call_response = self.client.post('/api/aiops/mcp/rpc/', {
             'jsonrpc': '2.0',
             'id': 2,
             'method': 'tools/call',
             'params': {
-                'name': 'sxdevops.query_recent_changes',
+                'name': 'aidevops.query_recent_changes',
                 'arguments': {'limit': 1},
             },
         }, format='json')
 
         self.assertEqual(call_response.status_code, 200)
-        self.assertEqual(call_response.data['result']['tool']['name'], 'sxdevops.query_recent_changes')
+        self.assertEqual(call_response.data['result']['tool']['name'], 'aidevops.query_recent_changes')
         self.assertFalse(call_response.data['result']['isError'])
         self.assertTrue(AIOpsToolInvocation.objects.filter(tool_name='query_recent_changes').exists())
         self.assertTrue(EventRecord.objects.filter(action='call_platform_mcp_tool').exists())
@@ -1095,7 +1095,7 @@ class AIOpsApiTests(TestCase):
         client.credentials(HTTP_AUTHORIZATION=f'Token {readonly_token.key}')
 
         response = client.post('/api/aiops/mcp/call/', {
-            'name': 'sxdevops.query_recent_changes',
+            'name': 'aidevops.query_recent_changes',
             'arguments': {'limit': 1},
         }, format='json')
 
@@ -1106,11 +1106,11 @@ class AIOpsApiTests(TestCase):
 
         with mock.patch('aiops.services.PLATFORM_MCP_RATE_LIMIT_PER_MINUTE', 1):
             first_response = self.client.post('/api/aiops/mcp/call/', {
-                'name': 'sxdevops.query_recent_changes',
+                'name': 'aidevops.query_recent_changes',
                 'arguments': {'limit': 1},
             }, format='json')
             second_response = self.client.post('/api/aiops/mcp/call/', {
-                'name': 'sxdevops.query_recent_changes',
+                'name': 'aidevops.query_recent_changes',
                 'arguments': {'limit': 1},
             }, format='json')
 
@@ -6692,7 +6692,7 @@ class AIOpsApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.data['detail'], '演示账号问答权限已临时关闭，如需体验请联系作者：592095766@qq.com')
+        self.assertEqual(response.data['detail'], '演示账号问答权限已临时关闭，如需体验请使用完整功能环境')
 
     @mock.patch('aiops.views.start_async_chat_processing')
     def test_demo_account_send_message_async_is_temporarily_disabled(self, mocked_start_async):
@@ -6711,7 +6711,7 @@ class AIOpsApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.data['detail'], '演示账号问答权限已临时关闭，如需体验请联系作者：592095766@qq.com')
+        self.assertEqual(response.data['detail'], '演示账号问答权限已临时关闭，如需体验请使用完整功能环境')
         mocked_start_async.assert_not_called()
 
     @mock.patch('aiops.services._request_model_completion')

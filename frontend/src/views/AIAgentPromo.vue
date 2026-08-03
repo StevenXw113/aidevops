@@ -5,15 +5,15 @@
         <el-icon><ArrowLeft /></el-icon>
         <span>返回</span>
       </button>
-      <div class="promo-title">SxDevOps AI Agent 产品介绍</div>
-      <a class="promo-open" href="/promo/sxdevops-ai-agent-promo.html" target="_blank" rel="noopener">
+      <div class="promo-title">AiDevOps AI Agent 产品介绍</div>
+      <a class="promo-open" href="/promo/aidevops-ai-agent-promo.html" target="_blank" rel="noopener">
         新窗口打开
       </a>
     </div>
     <iframe
       class="promo-frame"
-      src="/promo/sxdevops-ai-agent-promo.html"
-      title="SxDevOps AI Agent 产品介绍"
+      src="/promo/aidevops-ai-agent-promo.html"
+      title="AiDevOps AI Agent 产品介绍"
     ></iframe>
   </div>
 </template>

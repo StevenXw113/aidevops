@@ -293,7 +293,7 @@ class Command(BaseCommand):
                 'category': 'system',
                 'action': 'sync_role',
                 'title': '权限基线同步完成',
-                'summary': 'SxDevOps 运维管理员角色与菜单权限完成同步。',
+                'summary': 'AiDevOps 运维管理员角色与菜单权限完成同步。',
                 'result': EventRecord.RESULT_SUCCESS,
                 'severity': EventRecord.SEVERITY_INFO,
                 'actor_username': 'system',
@@ -304,7 +304,7 @@ class Command(BaseCommand):
                 'resource_name': '运维管理员',
                 'business_line': '平台',
                 'environment': 'shared',
-                'application': 'sxdevops',
+                'application': 'aidevops',
                 'correlation_id': 'rbac:ops-admin',
                 'related_resources': [
                     build_resource('rbac', 'menu_group', 'ops-console', '运维控制台'),

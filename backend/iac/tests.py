@@ -1,4 +1,4 @@
-﻿import copy
+import copy
 import io
 import zipfile
 from unittest import mock
@@ -28,7 +28,7 @@ class TerraformIacTests(TestCase):
             'zone': 'cn-hangzhou-h',
             'config': {
                 'metadata': {
-                    'project_name': 'sxdevops',
+                    'project_name': 'aidevops',
                     'business_line': 'platform',
                     'environment': 'prod',
                     'owner': 'iac-admin',
@@ -75,7 +75,7 @@ class TerraformIacTests(TestCase):
                     },
                     'object_storage': {
                         'enabled': False,
-                        'bucket_name': 'sxdevops-prod-artifacts',
+                        'bucket_name': 'aidevops-prod-artifacts',
                         'acl': 'private',
                         'storage_class': 'Standard',
                     },
@@ -155,12 +155,12 @@ class TerraformIacTests(TestCase):
         ]
         payload['config']['resources']['object_storage'] = {
             'enabled': True,
-            'bucket_name': 'sxdevops-prod-artifacts',
+            'bucket_name': 'aidevops-prod-artifacts',
             'acl': 'private',
             'storage_class': 'Standard',
             'buckets': [
-                {'bucket_name': 'sxdevops-prod-artifacts', 'acl': 'private', 'storage_class': 'Standard'},
-                {'bucket_name': 'sxdevops-prod-logs', 'acl': 'private', 'storage_class': 'IA'},
+                {'bucket_name': 'aidevops-prod-artifacts', 'acl': 'private', 'storage_class': 'Standard'},
+                {'bucket_name': 'aidevops-prod-logs', 'acl': 'private', 'storage_class': 'IA'},
             ],
         }
 
@@ -231,7 +231,7 @@ class TerraformIacTests(TestCase):
         self.assertEqual(response.status_code, 201)
         payload = response.json()
         self.assertEqual(payload['created_by'], 'iac-admin')
-        self.assertEqual(payload['config']['metadata']['project_name'], 'sxdevops')
+        self.assertEqual(payload['config']['metadata']['project_name'], 'aidevops')
         self.assertIn('README.md', payload['generated_files'])
         self.assertNotIn('terraform.tfvars', payload['generated_files'])
         self.assertIn('terraform.tfvars.example', payload['generated_files'])
@@ -263,7 +263,7 @@ class TerraformIacTests(TestCase):
             'zone': 'cn-north-4a',
             'config': {
                 'metadata': {
-                    'project_name': 'sxdevops',
+                    'project_name': 'aidevops',
                     'business_line': 'platform',
                     'environment': 'test',
                     'owner': 'iac-admin',
@@ -312,7 +312,7 @@ class TerraformIacTests(TestCase):
                     },
                     'object_storage': {
                         'enabled': False,
-                        'bucket_name': 'sxdevops-prod-artifacts',
+                        'bucket_name': 'aidevops-prod-artifacts',
                         'acl': 'private',
                         'storage_class': 'STANDARD',
                     },
@@ -426,12 +426,12 @@ class TerraformIacTests(TestCase):
         ]
         payload['config']['resources']['object_storage'] = {
             'enabled': True,
-            'bucket_name': 'sxdevops-prod-artifacts',
+            'bucket_name': 'aidevops-prod-artifacts',
             'acl': 'private',
             'storage_class': 'Standard',
             'buckets': [
-                {'bucket_name': 'sxdevops-prod-artifacts', 'acl': 'private', 'storage_class': 'Standard'},
-                {'bucket_name': 'sxdevops-prod-logs', 'acl': 'private', 'storage_class': 'IA'},
+                {'bucket_name': 'aidevops-prod-artifacts', 'acl': 'private', 'storage_class': 'Standard'},
+                {'bucket_name': 'aidevops-prod-logs', 'acl': 'private', 'storage_class': 'IA'},
             ],
         }
 

@@ -1749,7 +1749,7 @@ function initExecTerminal() {
   execTerminal.loadAddon(execFitAddon)
   execTerminal.open(execTerminalRef.value)
   execFitAddon.fit()
-  execTerminal.writeln('\x1b[1;36mSxDevOps Pod Terminal\x1b[0m')
+  execTerminal.writeln('\x1b[1;36mAiDevOps Pod Terminal\x1b[0m')
   execTerminal.writeln('\x1b[2mConnecting to pod...\x1b[0m')
   execTerminal.writeln('')
 
@@ -1781,7 +1781,7 @@ function connectExecTerminal() {
   if (!selectedClusterId.value || !execForm.value.pod_name || !execTerminal) return
   disconnectExecSocket()
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = localStorage.getItem('sxdevops_token') || ''
+  const token = localStorage.getItem('aidevops_token') || ''
   const params = new URLSearchParams({
     token,
     pod_name: execForm.value.pod_name,

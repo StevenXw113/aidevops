@@ -27,7 +27,7 @@ from django.utils.dateparse import parse_date, parse_datetime
 from cmdb.models import ConfigItem
 from eventwall.models import EventRecord
 from eventwall.services import record_event
-from sxdevops.features import filter_feature_tools, tool_feature_enabled
+from aidevops.features import filter_feature_tools, tool_feature_enabled
 from ops.host_tasks import build_host_target_snapshot as build_ops_host_target_snapshot
 from ops.host_tasks import build_k8s_target_snapshot as build_ops_k8s_target_snapshot
 from ops.host_tasks import resolve_host_source_refs, start_host_task
@@ -203,7 +203,7 @@ def _normalize_suggested_questions(questions):
     return normalized
 
 DEFAULT_SYSTEM_PROMPT = (
-    '你是 SxDevOps 平台内的 AIOps 智能助手。'
+    '你是 AiDevOps 平台内的 AIOps 智能助手。'
     '必须优先通过可用的 MCP 工具获取平台内结构化数据，严禁编造不存在的资源、告警、日志、链路和执行结果。'
     '回答时区分事实、推断和建议；涉及执行类动作时，未确认前只能生成草稿。'
 )
@@ -242,7 +242,7 @@ DANGEROUS_COMMAND_PATTERNS = [
 ]
 
 MCP_PROTOCOL_VERSION = '2025-03-26'
-MCP_CLIENT_INFO = {'name': 'SxDevOps AIOps', 'version': '1.0.0'}
+MCP_CLIENT_INFO = {'name': 'AiDevOps AIOps', 'version': '1.0.0'}
 MCP_TOOL_NAME_MAX_CHARS = 64
 MCP_TOOL_DESCRIPTION_MAX_CHARS = 1200
 MCP_RESULT_TEXT_MAX_CHARS = 800
@@ -7191,7 +7191,7 @@ def _build_k8s_install_manifest(target, namespace='default', draft_request=None)
     labels = [
         ('app.kubernetes.io/name', app_name),
         ('app.kubernetes.io/instance', app_name),
-        ('app.kubernetes.io/managed-by', 'sxdevops-aiops'),
+        ('app.kubernetes.io/managed-by', 'aidevops-aiops'),
     ]
 
     def label_block(indent):
@@ -9345,7 +9345,7 @@ PLATFORM_MCP_RATE_LIMIT_PER_MINUTE = 60
 
 PLATFORM_MCP_TOOL_DEFINITIONS = [
     {
-        'name': 'sxdevops.query_knowledge_graph',
+        'name': 'aidevops.query_knowledge_graph',
         'title': '查询 AIOps 知识图谱',
         'description': '按环境、系统或服务查询平台知识图谱节点和关系。',
         'permission': 'aiops.knowledge.view',
@@ -9362,7 +9362,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_alerts',
+        'name': 'aidevops.query_alerts',
         'title': '查询告警',
         'description': '查询告警中心只读告警事实。',
         'permission': 'ops.alert.view',
@@ -9379,7 +9379,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_alert_metrics',
+        'name': 'aidevops.query_alert_metrics',
         'title': '查询告警指标证据包',
         'description': '按告警上下文生成受预算约束的 PromQL 查询计划，返回指标趋势和异常摘要。',
         'permission': 'ops.metric.query',
@@ -9399,7 +9399,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_logs',
+        'name': 'aidevops.query_logs',
         'title': '查询日志',
         'description': '查询平台日志源中的只读日志样本。',
         'permission': 'ops.log.query',
@@ -9416,7 +9416,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_traces',
+        'name': 'aidevops.query_traces',
         'title': '查询链路',
         'description': '查询链路追踪只读样本和异常链路。',
         'permission': 'ops.trace.view',
@@ -9432,7 +9432,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_k8s_cluster_summary',
+        'name': 'aidevops.query_k8s_cluster_summary',
         'title': '查询 K8s 集群摘要',
         'description': '查询 Kubernetes 集群、Pod 和异常摘要。',
         'permission': 'ops.k8s.view',
@@ -9447,7 +9447,7 @@ PLATFORM_MCP_TOOL_DEFINITIONS = [
         },
     },
     {
-        'name': 'sxdevops.query_recent_changes',
+        'name': 'aidevops.query_recent_changes',
         'title': '查询最近变更',
         'description': '查询最近发布、工单和事件候选变更。',
         'permission': 'ops.deployment.view',
@@ -9653,8 +9653,8 @@ def invoke_platform_mcp_tool(tool_name, arguments=None, user=None, request=None)
 
 def build_platform_mcp_manifest(user=None):
     return {
-        'name': 'sxdevops-aiops',
-        'title': 'SxDevOps AIOps Platform MCP Server',
+        'name': 'aidevops-aiops',
+        'title': 'AiDevOps AIOps Platform MCP Server',
         'version': '2.1',
         'auth': {'type': 'token', 'header': 'Authorization'},
         'rate_limit': {'per_minute': PLATFORM_MCP_RATE_LIMIT_PER_MINUTE},
@@ -13510,7 +13510,7 @@ def list_model_provider_models(provider, probe=True, max_probe=8):
     headers = {
         'Authorization': f'Bearer {provider.get_api_key()}',
         'Accept': 'application/json',
-        'User-Agent': 'SxDevOps-AIOps/1.0',
+        'User-Agent': 'AiDevOps-AIOps/1.0',
     }
     for attempt_index in range(2):
         try:

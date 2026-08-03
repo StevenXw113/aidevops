@@ -1,8 +1,8 @@
 ﻿import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const TOKEN_KEY = 'sxdevops_token'
-const USER_KEY = 'sxdevops_user'
+const TOKEN_KEY = 'aidevops_token'
+const USER_KEY = 'aidevops_user'
 let isHandlingSessionExpired = false
 
 const request = axios.create({

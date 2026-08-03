@@ -1,7 +1,7 @@
-﻿from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from sxdevops.features import filter_feature_permissions, permission_feature_enabled
+from aidevops.features import filter_feature_permissions, permission_feature_enabled
 
 from .models import PermissionDefinition, Role, SystemModuleSetting, UserGroup
 from .registry import BUILTIN_ROLES, PERMISSION_DEFINITIONS

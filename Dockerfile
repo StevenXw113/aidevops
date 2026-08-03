@@ -33,4 +33,4 @@ WORKDIR /app/backend
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "sxdevops.asgi:application"]
+CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "aidevops.asgi:application"]

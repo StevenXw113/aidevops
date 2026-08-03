@@ -3,10 +3,10 @@
     <aside class="sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
       <div class="sidebar-logo">
         <div class="logo-icon">
-          <img src="@/assets/brand-mark.svg" alt="SxDevOps" class="brand-mark" />
+          <img src="@/assets/brand-mark.svg" alt="AiDevOps" class="brand-mark" />
         </div>
         <div class="logo-copy">
-          <span class="logo-text">SxDevOps</span>
+          <span class="logo-text">AiDevOps</span>
           <span class="logo-subtext">AI Agent</span>
         </div>
       </div>
@@ -197,7 +197,7 @@ const notificationsLoading = ref(false)
 const notificationItems = ref([])
 const notificationCount = ref(0)
 const moduleVisibility = ref({})
-const MODULE_SETTINGS_EVENT = 'sxdevops-module-settings-updated'
+const MODULE_SETTINGS_EVENT = 'aidevops-module-settings-updated'
 const TASK_SCHEDULES_VISIBLE = false
 const observabilityBoardPermissions = ['ops.grafana.view']
 const defaultOpenMenuKeys = ['aiops', 'observability', 'events']
@@ -608,7 +608,7 @@ async function loadModuleSettings() {
 }
 
 function openAIOpsAssistant() {
-  window.dispatchEvent(new Event('sxdevops-aiops-open'))
+  window.dispatchEvent(new Event('aidevops-aiops-open'))
 }
 
 function openAIAgentPromo() {

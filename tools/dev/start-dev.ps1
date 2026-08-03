@@ -164,7 +164,7 @@ Clear-DevPort -Port 3000 -AllowedNames @('node')
 $backend = Start-ServiceProcess `
     -Name 'Backend' `
     -FilePath 'python' `
-    -ArgumentList @('-m', 'daphne', '-b', '0.0.0.0', '-p', '8000', 'sxdevops.asgi:application') `
+    -ArgumentList @('-m', 'daphne', '-b', '0.0.0.0', '-p', '8000', 'aidevops.asgi:application') `
     -WorkingDirectory $backendDir `
     -StdOut $backendOut `
     -StdErr $backendErr `
@@ -182,7 +182,7 @@ $frontend = Start-ServiceProcess `
     -Port 3000
 
 Write-Host ''
-Write-Host 'SxDevOps dev environment is ready.'
+Write-Host 'AiDevOps dev environment is ready.'
 Write-Host 'Frontend: http://localhost:3000'
 Write-Host 'Backend : http://localhost:8000'
 Write-Host "Logs    : $logDir"

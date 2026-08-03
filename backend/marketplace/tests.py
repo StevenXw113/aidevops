@@ -273,7 +273,7 @@ class MarketplaceSeedTemplatesTests(TestCase):
             'status': 'running',
             'env_config': {'port': '6379'},
             'deployer': 'ops-demo',
-            'deploy_dir': '/opt/sxdevops/redis',
+            'deploy_dir': '/opt/aidevops/redis',
             'deploy_log': '[INFO] Docker Compose deploy succeeded',
         })
 

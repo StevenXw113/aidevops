@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 import requests as http_requests
 from django.conf import settings
@@ -18,10 +18,10 @@ PROVIDER_LABELS = {
 }
 
 DEMO_SERVICES = [
-    {'id': 'svc-gateway', 'name': 'gateway-service', 'short_name': 'gateway', 'layers': ['GENERAL'], 'group': 'sxdevops'},
-    {'id': 'svc-order', 'name': 'order-service', 'short_name': 'order', 'layers': ['GENERAL'], 'group': 'sxdevops'},
-    {'id': 'svc-payment', 'name': 'payment-service', 'short_name': 'payment', 'layers': ['GENERAL'], 'group': 'sxdevops'},
-    {'id': 'svc-member', 'name': 'member-service', 'short_name': 'member', 'layers': ['GENERAL'], 'group': 'sxdevops'},
+    {'id': 'svc-gateway', 'name': 'gateway-service', 'short_name': 'gateway', 'layers': ['GENERAL'], 'group': 'aidevops'},
+    {'id': 'svc-order', 'name': 'order-service', 'short_name': 'order', 'layers': ['GENERAL'], 'group': 'aidevops'},
+    {'id': 'svc-payment', 'name': 'payment-service', 'short_name': 'payment', 'layers': ['GENERAL'], 'group': 'aidevops'},
+    {'id': 'svc-member', 'name': 'member-service', 'short_name': 'member', 'layers': ['GENERAL'], 'group': 'aidevops'},
 ]
 
 DEMO_TRACES = [
