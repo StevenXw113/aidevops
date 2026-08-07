@@ -211,6 +211,26 @@ const routes = [
         meta: { title: 'Docker 环境', icon: 'Platform', permission: 'ops.docker.view' },
       },
       {
+        path: 'cloud/cmdb',
+        name: 'CmdbManage',
+        component: () => import('@/views/CmdbManage.vue'),
+        meta: {
+          title: '资源管理',
+          icon: 'Coin',
+          anyPermissions: ['cmdb.dashboard.view', 'cmdb.ci.view', 'cmdb.ci.manage', 'cmdb.topology.view'],
+        },
+      },
+      {
+        path: 'cloud/iac',
+        name: 'IaCManage',
+        component: () => import('@/views/IaCManage.vue'),
+        meta: {
+          title: 'IaC 方案',
+          icon: 'SetUp',
+          anyPermissions: ['ops.iac.view', 'ops.iac.manage', 'ops.iac.execute'],
+        },
+      },
+      {
         path: 'logs',
         redirect: () => {
           const authStore = useAuthStore(pinia)

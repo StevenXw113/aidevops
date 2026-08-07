@@ -270,6 +270,15 @@ const menuItems = [
     ],
   },
   {
+    moduleKey: 'cloud',
+    title: '云资源',
+    icon: 'Coin',
+    children: [
+      { path: '/cloud/cmdb', title: '资源管理', icon: 'Coin', anyPermissions: ['cmdb.dashboard.view', 'cmdb.ci.view', 'cmdb.ci.manage', 'cmdb.topology.view'] },
+      { path: '/cloud/iac', title: 'IaC 方案', icon: 'SetUp', anyPermissions: ['ops.iac.view', 'ops.iac.manage', 'ops.iac.execute'] },
+    ],
+  },
+  {
     moduleKey: 'system',
     title: '系统管理',
     icon: 'User',
