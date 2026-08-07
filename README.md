@@ -140,6 +140,11 @@ flowchart TB
 
 ![任务资源与执行入口](docs/screenshots/任务中心.png)
 
+### 云资源管理与 IaC
+
+![云资源管理](docs/screenshots/云资源管理.png)
+![IaC 方案](docs/screenshots/IaC方案.png)
+
 更多截图保存在 [docs/screenshots](docs/screenshots)。
 
 ## 技术栈

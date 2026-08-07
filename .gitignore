@@ -20,6 +20,8 @@ dist/
 .idea/
 *.swp
 *.swo
+.codebuddy/
+.playwright-cli/
 
 # OS
 .DS_Store
