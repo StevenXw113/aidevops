@@ -329,17 +329,6 @@ docker compose down
 - 建立更可信的事实链路：告警准、事件准、任务准、结果准。
 - 将高频、低风险动作逐步纳入可确认、可回滚、可审计的自动化闭环。
 
-## 贡献
-
-欢迎提交 Issue、讨论需求、补充文档或贡献代码。开始前建议先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-适合优先参与的方向：
-
-- 完善部署文档、截图和演示数据。
-- 补充 AIOps、可观测性、任务中心和 RBAC 的测试用例。
-- 新增数据源、模型供应商、工具调用和运维 Skill。
-- 优化前端工作台体验和移动端适配。
-
 ## 安全与生产部署提醒
 
 - 生产环境请显式配置 `SECRET_KEY`、`DEBUG=0`、`ALLOWED_HOSTS`、数据库和 Redis。
@@ -351,7 +340,3 @@ docker compose down
 ## 开源协议
 
 AiDevOps 基于 [Apache License 2.0](LICENSE) 开源。分发或二次开发时请保留项目中的 [NOTICE](NOTICE) 文件。
-
-## 特别说明
-
-AiDevOps 是面向真实运维现场的开源智能运维 Agent 平台，仍在持续迭代中。受限于维护精力，项目现阶段一定还有不少不完善的地方，也难免存在 Bug，欢迎大家多提 Issue、建议和 PR。
