@@ -86,9 +86,10 @@
           </template>
         </el-table-column>
         <el-table-column label="创建人" prop="created_by" width="100" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>
+            <el-button v-if="canManageIac" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
             <el-button v-if="canExecuteIac" link type="success" size="small" @click="openExecute(row)">执行</el-button>
             <el-button v-if="canManageIac" link type="warning" size="small" @click="syncCmdb(row)">同步 CMDB</el-button>
             <el-button v-if="canManageIac" link type="danger" size="small" @click="confirmDelete(row)">删除</el-button>
@@ -564,6 +565,31 @@ function openDetail(row) {
   getIaCStackExecutions(row.id).then((data) => { executions.value = data }).finally(() => { executionsLoading.value = false })
 }
 
+async function openEdit(row) {
+  if (!Object.keys(catalog.value).length) {
+    ElMessage.warning('云厂商目录尚未加载，请稍后重试')
+    return
+  }
+  formLoading.value = true
+  try {
+    const data = await getIaCStack(row.id)
+    editingId.value = data.id
+    form.name = data.name || ''
+    form.description = data.description || ''
+    form.cloud_provider = data.cloud_provider || ''
+    form.region = data.region || ''
+    form.zone = data.zone || ''
+    form.config = JSON.parse(JSON.stringify(data.config || {}))
+    if (!form.config.metadata) form.config.metadata = {}
+    form.config.metadata.project_name = form.config.metadata.project_name || data.name
+    activeTab.value = 'create'
+  } catch (e) {
+    // 拦截器已提示
+  } finally {
+    formLoading.value = false
+  }
+}
+
 async function downloadStack(row) {
   try {
     const blob = await downloadIaCStack(row.id)
@@ -596,13 +622,16 @@ async function saveStack() {
   }
   saving.value = true
   try {
+    const config = JSON.parse(JSON.stringify(form.config || {}))
+    if (!config.metadata) config.metadata = {}
+    config.metadata.project_name = config.metadata.project_name || form.name
     const payload = {
       name: form.name,
       description: form.description,
       cloud_provider: form.cloud_provider,
       region: form.region,
       zone: form.zone,
-      config: form.config,
+      config,
     }
     if (editingId.value) {
       await updateIaCStack(editingId.value, payload)

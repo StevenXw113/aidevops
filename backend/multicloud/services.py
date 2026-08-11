@@ -7,6 +7,7 @@ from django.utils import timezone
 from cmdb.models import CIType, ConfigItem, CostRecord
 
 from .models import CloudAsset, CloudCredential, CloudEnvironment, CloudSyncTask
+from .risk_scorer import assess_asset_risk
 from .sdk_adapters import CloudAdapterError, get_cloud_adapter, get_provider_sdk_capabilities
 
 
@@ -446,6 +447,11 @@ def sync_environment_inventory(environment, operator='', task_type='full'):
         desired, sync_meta = _inventory_for_environment(environment)
         active_keys = {(item['resource_type'], item['resource_id']) for item in desired}
         for item in desired:
+            risk_level, risk_reason = assess_asset_risk(item, environment)
+            if risk_level != 'normal' or risk_reason:
+                item = {**item, 'risk_level': risk_level}
+                item.setdefault('metadata', {})
+                item['metadata']['risk_reason'] = risk_reason
             CloudAsset.objects.update_or_create(
                 environment=environment,
                 resource_type=item['resource_type'],

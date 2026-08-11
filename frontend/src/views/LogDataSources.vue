@@ -5,7 +5,7 @@
         <div class="release-hero-title-row release-hero-title-inline">
           <span class="log-header-icon"><el-icon><DataBoard /></el-icon></span>
           <h2>日志数据源</h2>
-          <p class="page-inline-desc inline-subtitle">统一管理 Loki、ELK 和阿里云 SLS 的连接配置，查询页可以直接复用已保存的数据源。</p>
+          <p class="page-inline-desc inline-subtitle">统一管理 Loki、ELK、阿里云 SLS 和腾讯云 CLS 的连接配置，查询页可以直接复用已保存的数据源。</p>
         </div>
       </div>
       <div class="hero-actions">
@@ -175,6 +175,27 @@
             <el-input v-model="form.config.access_key_secret" show-password :placeholder="secretPlaceholder('access_key_secret')" />
           </el-form-item>
         </template>
+
+        <template v-else-if="form.provider === 'cls'">
+          <el-form-item label="CLS Endpoint">
+            <el-input v-model="form.config.endpoint" placeholder="cls.tencentcloudapi.com" />
+          </el-form-item>
+          <el-form-item label="Region">
+            <el-input v-model="form.config.region" placeholder="ap-guangzhou" />
+          </el-form-item>
+          <el-form-item label="TopicId">
+            <el-input v-model="form.config.topic_id" placeholder="日志主题 ID" />
+          </el-form-item>
+          <el-form-item label="Topic 名称">
+            <el-input v-model="form.config.topic" placeholder="可选，用于展示" />
+          </el-form-item>
+          <el-form-item label="SecretId">
+            <el-input v-model="form.config.secret_id" :placeholder="secretPlaceholder('secret_id')" />
+          </el-form-item>
+          <el-form-item label="SecretKey">
+            <el-input v-model="form.config.secret_key" show-password :placeholder="secretPlaceholder('secret_key')" />
+          </el-form-item>
+        </template>
       </el-form>
 
       <template #footer>
@@ -238,6 +259,10 @@ function getProviderDefaults(provider) {
     config.time_field = config.time_field || '@timestamp'
     config.message_fields = config.message_fields || 'message,log,msg'
   }
+  if (provider === 'cls') {
+    config.endpoint = config.endpoint || 'cls.tencentcloudapi.com'
+    config.region = config.region || 'ap-guangzhou'
+  }
   return config
 }
 
@@ -257,6 +282,7 @@ function providerLabel(provider) {
     loki: 'Loki',
     elk: 'ELK / Elasticsearch',
     sls: '阿里云 SLS',
+    cls: '腾讯云 CLS',
   }[provider] || provider
 }
 
@@ -265,6 +291,7 @@ function providerTagType(provider) {
     loki: 'success',
     elk: 'warning',
     sls: 'info',
+    cls: 'danger',
   }[provider] || 'info'
 }
 
@@ -273,6 +300,9 @@ function formatSummary(row) {
   if (row.provider === 'loki') return config.endpoint || '未配置 Loki 地址'
   if (row.provider === 'elk') {
     return [config.endpoint, config.index_pattern && `索引 ${config.index_pattern}`].filter(Boolean).join(' / ') || '未配置 ELK 连接'
+  }
+  if (row.provider === 'cls') {
+    return [config.region && `区域 ${config.region}`, config.topic && `主题 ${config.topic}`, config.endpoint].filter(Boolean).join(' / ') || '未配置 CLS 连接'
   }
   return [config.project && `项目 ${config.project}`, config.logstore && `日志库 ${config.logstore}`, config.endpoint].filter(Boolean).join(' / ') || '未配置 SLS 连接'
 }

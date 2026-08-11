@@ -5,7 +5,7 @@
         <div class="release-hero-title-row release-hero-title-inline">
           <span class="log-header-icon"><el-icon><Search /></el-icon></span>
           <h2>日志中心</h2>
-          <p class="page-desc inline-subtitle">支持 ELK、Loki、阿里云 SLS 日志查询。</p>
+          <p class="page-desc inline-subtitle">支持 ELK、Loki、阿里云 SLS 和腾讯云 CLS 日志查询。</p>
         </div>
       </div>
       <div class="hero-actions">
@@ -178,6 +178,26 @@
                     </span>
                   </template>
                   <el-input v-model="currentTab.queryText" type="textarea" :rows="2" placeholder='timeout OR auth error OR cache' />
+                </el-form-item>
+              </template>
+
+              <template v-else-if="isCls">
+                <div class="log-filter-grid log-filter-grid--secondary">
+                  <div class="log-inline-filter">
+                    <span class="log-inline-filter__label">日志主题</span>
+                    <el-select v-model="currentTab.sourceName" class="search-control" size="small" placeholder="选择 Topic" filterable allow-create clearable>
+                      <el-option v-for="item in currentTab.catalogItems" :key="item.topic_id || item.name" :label="item.name" :value="item.name" />
+                    </el-select>
+                  </div>
+                </div>
+                <el-form-item class="syntax-form-item">
+                  <template #label>
+                    <span class="field-label-with-help">
+                      <span>CLS 检索语句</span>
+                      <el-button link type="primary" @click="openSyntaxHelp('cls')">查询语法帮助</el-button>
+                    </span>
+                  </template>
+                  <el-input v-model="currentTab.queryText" type="textarea" :rows="2" placeholder='status:ERROR AND resource:api' />
                 </el-form-item>
               </template>
             </el-form>
@@ -406,6 +426,21 @@ const SYNTAX_HELP_DOCS = {
     ],
     link: 'https://www.alibabacloud.com/help/en/sls/query-syntax/',
   },
+  cls: {
+    title: '腾讯云 CLS 检索帮助',
+    description: '适合关键字检索、字段过滤和布尔查询，演示场景可直接搜 timeout、auth、cache。',
+    examples: [
+      'timeout',
+      'status:ERROR AND service:auth-service',
+      'resource:api OR message:cache',
+    ],
+    tips: [
+      '可直接搜关键字，也可写 field:value 形式。',
+      '支持 AND、OR、NOT 组合条件。',
+      '先选定日志主题（Topic），再输入检索语句更接近真实 CLS 使用方式。',
+    ],
+    link: 'https://cloud.tencent.com/document/product/614/47044',
+  },
 }
 const quickRanges = [
   { key: '10m', label: '最近10分钟', minutes: 10 },
@@ -443,6 +478,7 @@ const activeProvider = computed(() => currentDataSource.value?.provider || '')
 const isLoki = computed(() => activeProvider.value === 'loki')
 const isElk = computed(() => activeProvider.value === 'elk')
 const isSls = computed(() => activeProvider.value === 'sls')
+const isCls = computed(() => activeProvider.value === 'cls')
 const currentResults = computed(() => currentTab.value?.results || { total: 0, source: '', took_ms: null, progress: '', logs: [] })
 const errorCount = computed(() => currentResults.value.logs.filter((item) => normalizeLogLevel(item) === 'error').length)
 const currentHelpDoc = computed(() => SYNTAX_HELP_DOCS[helpProvider.value] || SYNTAX_HELP_DOCS.loki)
@@ -462,6 +498,13 @@ const currentSummary = computed(() => {
     return [
       { label: 'Project', value: config.project || '--' },
       { label: 'Logstore', value: config.logstore || '--' },
+      { label: 'Endpoint', value: config.endpoint || '--' },
+    ]
+  }
+  if (activeProvider.value === 'cls') {
+    return [
+      { label: 'Region', value: config.region || '--' },
+      { label: 'Topic', value: config.topic || '--' },
       { label: 'Endpoint', value: config.endpoint || '--' },
     ]
   }
@@ -619,6 +662,7 @@ function providerLabel(provider) {
     loki: 'Loki',
     elk: 'ELK / Elasticsearch',
     sls: '阿里云 SLS',
+    cls: '腾讯云 CLS',
   }[provider] || provider
 }
 
@@ -627,6 +671,7 @@ function providerTagType(provider) {
     loki: 'success',
     elk: 'warning',
     sls: 'info',
+    cls: 'danger',
   }[provider] || 'info'
 }
 
@@ -1440,6 +1485,15 @@ async function loadCatalog(tab = currentTab.value) {
       if (!tab.sourceName) {
         tab.sourceName = datasource.config?.logstore || tab.catalogItems[0]?.name || ''
       }
+    } else if (datasource.provider === 'cls') {
+      const response = await getLogProviderCatalog('cls', {
+        datasource_id: tab.datasourceId,
+        action: 'sources',
+      })
+      tab.catalogItems = response.items || []
+      if (!tab.sourceName) {
+        tab.sourceName = datasource.config?.topic || tab.catalogItems[0]?.name || ''
+      }
     }
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '加载目录失败')
@@ -1569,6 +1623,12 @@ function buildPayload(tab) {
     payload.source = tab.sourceName || datasource.config?.logstore
     payload.logstore = payload.source
     payload.topic = datasource.config?.topic || ''
+  } else if (datasource?.provider === 'cls') {
+    payload.query = tab.queryText.trim()
+    payload.source = tab.sourceName || datasource.config?.topic
+    const topicItem = (tab.catalogItems || []).find((item) => item.name === payload.source)
+    payload.topic_id = topicItem?.topic_id || datasource.config?.topic_id || ''
+    payload.topic = datasource.config?.topic || payload.source
   }
   return payload
 }

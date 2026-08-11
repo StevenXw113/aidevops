@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from cmdb.models import ConfigItem
 from multicloud.models import CloudAsset, CloudCredential, CloudEnvironment
+from multicloud.risk_scorer import assess_asset_risk
 from multicloud.services import sync_environment_inventory
 
 
@@ -185,3 +186,74 @@ class MultiCloudTests(TestCase):
         self.assertTrue(CloudAsset.objects.filter(environment=self.environment, resource_id='i-live-001').exists())
         self.environment.refresh_from_db()
         self.assertEqual(self.environment.summary['sync_mode'], 'sdk')
+
+
+class RiskScorerTests(TestCase):
+    def setUp(self):
+        self.credential = CloudCredential.objects.create(
+            provider='aliyun',
+            name='risk-aliyun',
+            account_id='100002',
+            auth_mode='demo',
+            demo_mode=True,
+            created_by='test',
+            updated_by='test',
+        )
+        self.environment = CloudEnvironment.objects.create(
+            credential=self.credential,
+            name='risk-prod',
+            code='risk-prod',
+            environment_type='prod',
+            region='cn-hangzhou',
+        )
+
+    def test_normal_asset_without_indicators_stays_normal(self):
+        item = {
+            'name': 'web-01', 'resource_type': 'ecs', 'resource_id': 'i-001',
+            'private_ip': '10.0.0.5', 'public_ip': '', 'risk_level': 'normal',
+            'metadata': {}, 'tags': {},
+        }
+        level, _ = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'normal')
+
+    def test_critical_port_exposure_raises_warning(self):
+        item = {
+            'name': 'db-01', 'resource_type': 'ecs', 'resource_id': 'i-002',
+            'private_ip': '10.0.0.6', 'public_ip': '', 'risk_level': 'normal',
+            'metadata': {'open_ports': [22, 6379]}, 'tags': {},
+        }
+        level, _ = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'critical')
+
+    def test_cert_about_to_expire_raises_warning(self):
+        item = {
+            'name': 'lb-01', 'resource_type': 'slb', 'resource_id': 'lb-001',
+            'risk_level': 'normal', 'metadata': {'cert_expire_days': 20}, 'tags': {},
+        }
+        level, reason = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'warning')
+        self.assertIn('证书', reason)
+
+    def test_cert_expiring_soon_raises_critical(self):
+        item = {
+            'name': 'lb-02', 'resource_type': 'slb', 'resource_id': 'lb-002',
+            'risk_level': 'normal', 'metadata': {'cert_expire_days': 3}, 'tags': {},
+        }
+        level, _ = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'critical')
+
+    def test_prod_public_exposure_raises_warning(self):
+        item = {
+            'name': 'web-02', 'resource_type': 'ecs', 'resource_id': 'i-003',
+            'public_ip': '203.0.113.10', 'risk_level': 'normal', 'metadata': {}, 'tags': {},
+        }
+        level, _ = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'warning')
+
+    def test_explicit_risk_level_is_preserved(self):
+        item = {
+            'name': 'db-02', 'resource_type': 'rds', 'resource_id': 'db-001',
+            'risk_level': 'normal', 'metadata': {'open_ports': [3306]}, 'tags': {},
+        }
+        level, _ = assess_asset_risk(item, self.environment)
+        self.assertEqual(level, 'critical')

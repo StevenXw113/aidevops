@@ -95,7 +95,7 @@ class LogViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         providers = response.json()['providers']
-        self.assertEqual([item['id'] for item in providers], ['loki', 'elk', 'sls'])
+        self.assertEqual([item['id'] for item in providers], ['loki', 'elk', 'sls', 'cls'])
         self.assertEqual(providers[0]['defaults']['endpoint'], 'http://loki.example:3100')
 
     def test_can_create_log_datasource(self):

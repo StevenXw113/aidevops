@@ -505,6 +505,14 @@ LOG_PROVIDER_CONFIGS = {
         'access_key_id': os.getenv('ALIYUN_SLS_ACCESS_KEY_ID', ''),
         'access_key_secret': os.getenv('ALIYUN_SLS_ACCESS_KEY_SECRET', ''),
     },
+    'cls': {
+        'endpoint': os.getenv('TENCENT_CLS_ENDPOINT', ''),
+        'region': os.getenv('TENCENT_CLS_REGION', ''),
+        'topic_id': os.getenv('TENCENT_CLS_TOPIC_ID', ''),
+        'topic': os.getenv('TENCENT_CLS_TOPIC', ''),
+        'secret_id': os.getenv('TENCENT_CLS_SECRET_ID', ''),
+        'secret_key': os.getenv('TENCENT_CLS_SECRET_KEY', ''),
+    },
 }
 
 OBSERVABILITY_CONFIG = {

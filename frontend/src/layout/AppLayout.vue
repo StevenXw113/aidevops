@@ -274,7 +274,7 @@ const menuItems = [
     title: '云资源',
     icon: 'Coin',
     children: [
-      { path: '/cloud/cmdb', title: '资源管理', icon: 'Coin', anyPermissions: ['cmdb.dashboard.view', 'cmdb.ci.view', 'cmdb.ci.manage', 'cmdb.topology.view'] },
+      { path: '/cloud/manage', title: 'CMDB', icon: 'Coin', anyPermissions: ['ops.multicloud.view', 'ops.multicloud.manage', 'ops.multicloud.sync', 'cmdb.dashboard.view', 'cmdb.ci.view'] },
       { path: '/cloud/iac', title: 'IaC 方案', icon: 'SetUp', anyPermissions: ['ops.iac.view', 'ops.iac.manage', 'ops.iac.execute'] },
     ],
   },

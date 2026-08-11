@@ -31,6 +31,8 @@ SENSITIVE_KEYS = {
     'bearer_token',
     'access_key_id',
     'access_key_secret',
+    'secret_id',
+    'secret_key',
 }
 TRACE_ID_KEYS = ('trace_id', 'traceId', 'traceID', 'trace.id', 'trace.trace_id', 'otelTraceID')
 TRACE_ID_PATTERN = re.compile(r'(?:"?(?:trace_id|traceId|traceID|trace\.id)"?\s*[:=]\s*"?(?P<trace>[0-9a-fA-F]{16,32})"?)')
@@ -94,6 +96,11 @@ def _provider_defaults():
             'endpoint': '',
             'project': '',
             'logstore': '',
+            'topic': '',
+        },
+        'cls': {
+            'endpoint': '',
+            'topic_id': '',
             'topic': '',
         },
     }
@@ -168,6 +175,13 @@ def _provider_info():
             'description': '查询阿里云日志服务中的 Logstore。',
             'configured': bool(defaults.get('sls', {}).get('endpoint') and defaults.get('sls', {}).get('project')),
             'defaults': _public_config(defaults.get('sls', {})),
+        },
+        {
+            'id': 'cls',
+            'name': '腾讯云 CLS',
+            'description': '查询腾讯云日志服务中的日志主题。',
+            'configured': bool(defaults.get('cls', {}).get('endpoint')),
+            'defaults': _public_config(defaults.get('cls', {})),
         },
     ]
 
@@ -1332,6 +1346,193 @@ def _query_sls(config, payload):
     }
 
 
+def _cls_host(config):
+    endpoint = (config.get('endpoint') or '').replace('https://', '').replace('http://', '').strip('/')
+    if not endpoint:
+        raise ProviderError('Tencent CLS endpoint is required')
+    return endpoint
+
+
+def _cls_region(config):
+    return (config.get('region') or '').strip()
+
+
+def _cls_request(action, config, params):
+    secret_id = config.get('secret_id')
+    secret_key = config.get('secret_key')
+    if not secret_id or not secret_key:
+        raise ProviderError('Tencent CLS secret id and secret key are required')
+    host = _cls_host(config)
+    region = _cls_region(config)
+
+    service = 'cls'
+    timestamp = int(datetime.now(dt_timezone.utc).timestamp())
+    date = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
+    payload_bytes = json.dumps(params, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+
+    canonical_headers = (
+        f'content-type:application/json; charset=utf-8\n'
+        f'host:{host}\n'
+        f'x-tc-action:{action.lower()}\n'
+    )
+    signed_headers = 'content-type;host;x-tc-action'
+    hashed_payload = hashlib.sha256(payload_bytes).hexdigest()
+    canonical_request = '\n'.join([
+        'POST',
+        '/',
+        '',
+        canonical_headers,
+        signed_headers,
+        hashed_payload,
+    ])
+
+    credential_scope = f'{date}/{service}/tc3_request'
+    string_to_sign = '\n'.join([
+        'TC3-HMAC-SHA256',
+        str(timestamp),
+        credential_scope,
+        hashlib.sha256(canonical_request.encode('utf-8')).hexdigest(),
+    ])
+
+    secret_date = hmac.new(('TC3' + secret_key).encode('utf-8'), date.encode('utf-8'), hashlib.sha256).digest()
+    secret_service = hmac.new(secret_date, service.encode('utf-8'), hashlib.sha256).digest()
+    secret_signing = hmac.new(secret_service, 'tc3_request'.encode('utf-8'), hashlib.sha256).digest()
+    signature = hmac.new(secret_signing, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    authorization = (
+        f'TC3-HMAC-SHA256 Credential={secret_id}/{credential_scope}, '
+        f'SignedHeaders={signed_headers}, Signature={signature}'
+    )
+    headers = {
+        'Authorization': authorization,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Host': host,
+        'X-TC-Action': action,
+        'X-TC-Version': '2020-10-16',
+        'X-TC-Timestamp': str(timestamp),
+        'X-TC-Region': region,
+    }
+
+    url = f'https://{host}/'
+    try:
+        response = http_requests.request('POST', url, data=payload_bytes, headers=headers, timeout=REQUEST_TIMEOUT)
+    except http_requests.Timeout as exc:
+        raise ProviderError('Tencent CLS request timed out', status.HTTP_504_GATEWAY_TIMEOUT, {'detail': str(exc)}) from exc
+    except http_requests.ConnectionError as exc:
+        raise ProviderError('Unable to connect to Tencent CLS', status.HTTP_502_BAD_GATEWAY, {'detail': str(exc)}) from exc
+    if not response.ok:
+        body = _safe_json(response)
+        raise ProviderError(
+            body.get('Message') or body.get('message') or 'Tencent CLS request failed',
+            status_code=response.status_code,
+            detail=body,
+        )
+    return _safe_json(response)
+
+
+def _catalog_cls(config, payload):
+    if _is_demo_config(config):
+        names = config.get('demo_topics') or [config.get('topic') or 'demo-cls-topic', 'demo-audit-topic']
+        return {'kind': 'topics', 'items': [{'name': name} for name in names]}
+
+    data = _cls_request('DescribeTopics', config, {'Offset': 0, 'Limit': 50})
+    topics = (data.get('Response') or {}).get('Topics') or []
+    items = [
+        {
+            'name': topic.get('TopicName') or topic.get('TopicId'),
+            'topic_id': topic.get('TopicId'),
+        }
+        for topic in topics
+    ]
+    return {'kind': 'topics', 'items': items}
+
+
+def _query_cls(config, payload):
+    topic_id = payload.get('topic_id') or config.get('topic_id')
+    query = (payload.get('query') or '').strip() or '*'
+    start_ms, end_ms = _time_bounds(payload)
+
+    if _is_demo_config(config):
+        matched_items = [
+            item for item in _demo_cls_documents(start_ms, end_ms)
+            if _matches_demo_query(item.get('message', ''), item, query)
+        ]
+        raw_logs = matched_items[:_sanitize_limit(payload.get('limit'))]
+        total = len(matched_items)
+    else:
+        if not topic_id:
+            raise ProviderError('Tencent CLS topic id is required')
+        params = {
+            'TopicId': topic_id,
+            'Query': query,
+            'From': int(start_ms / 1000),
+            'To': int(end_ms / 1000),
+            'Limit': _sanitize_limit(payload.get('limit')),
+        }
+        response = _cls_request('SearchLog', config, params)
+        resp = response.get('Response') or {}
+        raw_logs = resp.get('Results') or []
+        total = resp.get('Analysis') and len(raw_logs) or len(raw_logs)
+
+    logs = []
+    for item in raw_logs:
+        if not isinstance(item, dict):
+            continue
+        timestamp = item.get('__time__') or item.get('Timestamp') or item.get('Time')
+        message = _pick_message(item, ['message', 'content', 'msg', 'log', '__content__'])
+        logs.append({
+            'timestamp': _iso_from_ms(timestamp) if timestamp else '',
+            'message': message,
+            'level': _detect_level(item.get('level') or item.get('severity') or '', item),
+            'source': config.get('topic') or payload.get('source') or topic_id or 'cls',
+            'attributes': _with_trace_id(item, message),
+        })
+        if logs[-1]['level'] == 'unknown':
+            logs[-1]['level'] = _detect_level(logs[-1]['message'], item)
+
+    return {
+        'provider': 'cls',
+        'query': query,
+        'source': config.get('topic') or topic_id or 'cls',
+        'total': total,
+        'took_ms': None,
+        'logs': logs,
+    }
+
+
+def _demo_cls_documents(start_ms, end_ms):
+    entries = [
+        ('INFO', 'order-service', 'order-01', 'com.aidevops.order.controller.OrderController', 'create order success, orderNo=CO202603160001, tenantId=t-ob, amount=299.00'),
+        ('ERROR', 'order-service', 'order-02', 'com.aidevops.order.service.impl.OrderSubmitServiceImpl', 'submit order failed, orderNo=CO202603160009, tenantId=t-vip, ex=java.lang.IllegalStateException: warehouse api timeout\njava.lang.IllegalStateException: warehouse api timeout\n\tat com.aidevops.order.service.impl.OrderSubmitServiceImpl.submit(OrderSubmitServiceImpl.java:126)'),
+        ('INFO', 'payment-service', 'payment-01', 'com.aidevops.payment.service.CallbackService', 'payment callback processed successfully, channel=wechat, tradeStatus=SUCCESS'),
+        ('ERROR', 'payment-service', 'payment-02', 'com.aidevops.payment.controller.PaymentCallbackController', 'payment callback processing exception, requestId=cb-20260316-991, tenantId=t-ob, ex=java.lang.NullPointerException: callback payload is null'),
+        ('WARN', 'auth-service', 'auth-01', 'com.aidevops.auth.filter.JwtTokenFilter', 'token will expire soon, userId=10086, expireIn=92s, clientIp=10.20.31.18'),
+        ('ERROR', 'auth-service', 'auth-02', 'com.aidevops.auth.filter.JwtTokenFilter', 'authentication failed, token verify error, reason=JwtException: token expired'),
+        ('INFO', 'user-service', 'user-01', 'com.aidevops.user.controller.UserPortalController', 'tenant gray user routed to v2026.3-gray, tenantId=t-vip, feature=user-portrait-v2, percent=10'),
+        ('WARN', 'stock-service', 'stock-01', 'com.aidevops.stock.service.StockService', 'stock sync degraded, region=cn-south, delayMs=860'),
+        ('INFO', 'gateway-service', 'gateway-01', 'com.aidevops.gateway.filter.TraceFilter', 'routed request, path=/api/order/create, traceId=cls-2026031600231991, latencyMs=128'),
+    ]
+    docs = []
+    cursor = start_ms
+    for idx, (level, service, instance, clazz, message) in enumerate(entries):
+        ts = cursor + idx * 37_000
+        if ts > end_ms:
+            break
+        docs.append({
+            '__time__': str(ts // 1000),
+            'Timestamp': str(ts // 1000),
+            'level': level,
+            'service': service,
+            'service_name': service,
+            'container': instance,
+            'host': f'{service}-{instance}',
+            'app': service,
+            'log.class': clazz,
+            'message': message,
+        })
+    return docs
+
+
 def _get_catalog(provider, config, payload):
     if provider == 'loki':
         return _catalog_loki(config, payload)
@@ -1339,6 +1540,8 @@ def _get_catalog(provider, config, payload):
         return _catalog_elk(config, payload)
     if provider == 'sls':
         return _catalog_sls(config, payload)
+    if provider == 'cls':
+        return _catalog_cls(config, payload)
     raise ProviderError('Unsupported log provider')
 
 
@@ -1349,6 +1552,8 @@ def _run_query(provider, config, payload):
         return _query_elk(config, payload)
     if provider == 'sls':
         return _query_sls(config, payload)
+    if provider == 'cls':
+        return _query_cls(config, payload)
     raise ProviderError('Unsupported log provider')
 
 

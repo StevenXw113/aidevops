@@ -1217,6 +1217,7 @@ class LogDataSource(models.Model):
         ('loki', 'Loki'),
         ('elk', 'ELK / Elasticsearch'),
         ('sls', '阿里云 SLS'),
+        ('cls', '腾讯云 CLS'),
     ]
 
     name = models.CharField('名称', max_length=128, unique=True)

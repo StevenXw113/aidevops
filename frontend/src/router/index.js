@@ -211,13 +211,13 @@ const routes = [
         meta: { title: 'Docker 环境', icon: 'Platform', permission: 'ops.docker.view' },
       },
       {
-        path: 'cloud/cmdb',
-        name: 'CmdbManage',
-        component: () => import('@/views/CmdbManage.vue'),
+        path: 'cloud/manage',
+        name: 'CloudResources',
+        component: () => import('@/views/CloudResources.vue'),
         meta: {
-          title: '资源管理',
+          title: 'CMDB',
           icon: 'Coin',
-          anyPermissions: ['cmdb.dashboard.view', 'cmdb.ci.view', 'cmdb.ci.manage', 'cmdb.topology.view'],
+          anyPermissions: ['ops.multicloud.view', 'ops.multicloud.manage', 'ops.multicloud.sync', 'cmdb.dashboard.view', 'cmdb.ci.view'],
         },
       },
       {
