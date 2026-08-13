@@ -107,6 +107,15 @@ class BaseCloudAdapter:
     def fetch_cost_series(self, months=6):
         return None
 
+    def fetch_regions(self, region=''):
+        """Return live regions and availability zones for the provider.
+
+        Returns a dict with ``regions`` (list of ``{'value', 'label'}``) and
+        ``zones`` (mapping of region -> list of ``{'value', 'label'}``).
+        Subclasses override this to query the real cloud API.
+        """
+        return {'regions': [], 'zones': {}}
+
 
 class AwsCloudAdapter(BaseCloudAdapter):
     provider = 'aws'
@@ -183,6 +192,26 @@ class AwsCloudAdapter(BaseCloudAdapter):
             values.append(float(row.get('Total', {}).get('UnblendedCost', {}).get('Amount', '0')))
         return {'labels': labels, 'values': values, 'unit': 'USD'}
 
+    def fetch_regions(self, region=''):
+        session = self._session()
+        region_name = region or self.default_region('ap-southeast-1')
+        ec2 = session.client('ec2', region_name=region_name)
+        regions = [
+            {'value': item.get('RegionName'), 'label': item.get('RegionName')}
+            for item in ec2.describe_regions().get('Regions', [])
+        ]
+        zones = {}
+        for r in regions:
+            try:
+                azs = ec2.describe_availability_zones(RegionNames=[r['value']]).get('AvailabilityZones', [])
+                zones[r['value']] = [
+                    {'value': z.get('ZoneName'), 'label': z.get('ZoneName')}
+                    for z in azs if z.get('State') == 'available'
+                ]
+            except Exception:
+                zones[r['value']] = []
+        return {'regions': regions, 'zones': zones}
+
 
 class AliyunCloudAdapter(BaseCloudAdapter):
     provider = 'aliyun'
@@ -211,6 +240,29 @@ class AliyunCloudAdapter(BaseCloudAdapter):
             'sdk_mode': 'aliyun-python-sdk',
             'count': count,
         }
+
+    def fetch_regions(self, region=''):
+        regions_request = importlib.import_module('aliyunsdkecs.request.v20140526.DescribeRegionsRequest')
+        zones_request = importlib.import_module('aliyunsdkecs.request.v20140526.DescribeZonesRequest')
+        response = json.loads(self._client().do_action_with_exception(regions_request.DescribeRegionsRequest()))
+        regions = [
+            {'value': item.get('RegionId'), 'label': f'{item.get("LocalName")} ({item.get("RegionId")})'}
+            for item in ((response.get('Regions') or {}).get('Region') or [])
+        ]
+        zones = {}
+        for r in regions:
+            try:
+                request = zones_request.DescribeZonesRequest()
+                request.set_RegionId(r['value'])
+                request.set_accept_format('json')
+                zone_resp = json.loads(self._client(r['value']).do_action_with_exception(request))
+                zones[r['value']] = [
+                    {'value': item.get('ZoneId'), 'label': item.get('LocalName')}
+                    for item in ((zone_resp.get('Zones') or {}).get('Zone') or [])
+                ]
+            except Exception:
+                zones[r['value']] = []
+        return {'regions': regions, 'zones': zones}
 
     def fetch_inventory(self, environment):
         request_module = importlib.import_module('aliyunsdkecs.request.v20140526.DescribeInstancesRequest')
@@ -282,6 +334,37 @@ class TencentCloudAdapter(BaseCloudAdapter):
             assets.append(self.asset(environment, row.get('InstanceName') or row.get('InstanceId'), 'ecs', row.get('InstanceId'), region=environment.region or self.default_region('ap-guangzhou'), zone=row.get('Placement', {}).get('Zone', ''), status='running' if row.get('InstanceState') == 'RUNNING' else 'stopped', charge_type=row.get('InstanceChargeType', ''), private_ip=private_ips[0] if private_ips else '', public_ip=public_ips[0] if public_ips else '', vpc_name=row.get('VirtualPrivateCloud', {}).get('VpcId', ''), spec=row.get('InstanceType', '')))
         return assets
 
+    def fetch_regions(self, region=''):
+        credential_module = importlib.import_module('tencentcloud.common.credential')
+        profile_module = importlib.import_module('tencentcloud.common.profile.client_profile')
+        http_module = importlib.import_module('tencentcloud.common.profile.http_profile')
+        client_module = importlib.import_module('tencentcloud.cvm.v20170312.cvm_client')
+        models_module = importlib.import_module('tencentcloud.cvm.v20170312.models')
+        cred = credential_module.Credential(self.credential.access_key_id, self.credential.access_key_secret)
+        http_profile = http_module.HttpProfile()
+        http_profile.endpoint = 'cvm.tencentcloudapi.com'
+        client_profile = profile_module.ClientProfile()
+        client_profile.httpProfile = http_profile
+        client = client_module.CvmClient(cred, region or self.default_region('ap-guangzhou'), client_profile)
+        payload = json.loads(client.DescribeRegions(models_module.DescribeRegionsRequest()).to_json_string())
+        regions = [
+            {'value': item.get('Region'), 'label': f'{item.get("RegionName")} ({item.get("Region")})'}
+            for item in payload.get('RegionSet', []) if item.get('RegionState') == 'AVAILABLE'
+        ]
+        zones = {}
+        for r in regions:
+            try:
+                request = models_module.DescribeZonesRequest()
+                request.Region = r['value']
+                zone_payload = json.loads(client.DescribeZones(request).to_json_string())
+                zones[r['value']] = [
+                    {'value': item.get('Zone'), 'label': item.get('ZoneName')}
+                    for item in zone_payload.get('ZoneSet', []) if item.get('ZoneState') == 'AVAILABLE'
+                ]
+            except Exception:
+                zones[r['value']] = []
+        return {'regions': regions, 'zones': zones}
+
 
 class HuaweiCloudAdapter(BaseCloudAdapter):
     provider = 'huawei'
@@ -336,6 +419,36 @@ class HuaweiCloudAdapter(BaseCloudAdapter):
                     tags[key] = value
             assets.append(self.asset(environment, getattr(row, 'name', '') or getattr(row, 'id', ''), 'ecs', getattr(row, 'id', ''), region=environment.region or self.default_region('cn-north-4'), zone=getattr(row, 'os_ext_a_zavailability_zone', '') or '', status='running' if getattr(row, 'status', '') == 'ACTIVE' else 'stopped', private_ip=private_ip, public_ip=public_ip, spec=getattr(getattr(row, 'flavor', None), 'id', '') or '', tags=tags, metadata={'host_status': getattr(row, 'host_status', ''), 'description': getattr(row, 'description', ''), 'enterprise_project_id': getattr(row, 'enterprise_project_id', '')}))
         return assets
+
+    def fetch_regions(self, region=''):
+        region_module = importlib.import_module('huaweicloudsdkecs.v2.region.ecs_region')
+        ecs_region = region_module.EcsRegion
+        known = [
+            {'value': 'cn-north-4', 'label': '华北-北京四'},
+            {'value': 'cn-north-1', 'label': '华北-北京一'},
+            {'value': 'cn-east-3', 'label': '华东-上海一'},
+            {'value': 'cn-south-1', 'label': '华南-广州'},
+            {'value': 'cn-southwest-2', 'label': '西南-贵阳一'},
+            {'value': 'ap-southeast-1', 'label': '亚太-香港'},
+            {'value': 'ap-southeast-3', 'label': '亚太-新加坡'},
+            {'value': 'eu-west-101', 'label': '欧洲-巴黎'},
+        ]
+        regions = []
+        for item in known:
+            if getattr(ecs_region, 'value_of', None) and ecs_region.value_of(item['value']):
+                regions.append(item)
+        zones = {}
+        for r in regions:
+            try:
+                response = self._client(r['value']).list_azs()
+                rows = getattr(response, 'availability_zones', []) or []
+                zones[r['value']] = [
+                    {'value': getattr(z, 'zone_name', '') or '', 'label': getattr(z, 'zone_name', '') or ''}
+                    for z in rows
+                ]
+            except Exception:
+                zones[r['value']] = []
+        return {'regions': regions, 'zones': zones}
 
 
 class PlaceholderCloudAdapter(BaseCloudAdapter):

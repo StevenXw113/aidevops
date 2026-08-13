@@ -19,6 +19,7 @@ from .serializers import (
     TerraformStackListSerializer,
     TerraformStackSerializer,
 )
+from .regions import get_provider_regions, regions_for_all_providers
 from .terraform import PROVIDER_CATALOG
 
 
@@ -123,6 +124,17 @@ class TerraformStackViewSet(RBACPermissionMixin, viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated, build_rbac_permission('ops.iac.view')])
 def terraform_catalog_view(request):
     return Response({'providers': PROVIDER_CATALOG})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, build_rbac_permission('ops.iac.view')])
+def terraform_regions_view(request):
+    provider = (request.query_params.get('provider') or '').strip()
+    prefer_live = request.query_params.get('live', '1') != '0'
+    if not provider:
+        return Response({'providers': regions_for_all_providers(prefer_live)})
+    data = get_provider_regions(provider, prefer_live=prefer_live)
+    return Response({'provider': provider, **data})
 
 
 @api_view(['POST'])

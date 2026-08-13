@@ -10,6 +10,7 @@ router.register('stacks', views.TerraformStackViewSet, basename='iac-stack')
 urlpatterns = [
     path('', include(router.urls)),
     path('catalog/', views.terraform_catalog_view, name='iac-catalog'),
+    path('regions/', views.terraform_regions_view, name='iac-regions'),
     path('render/', views.terraform_render_view, name='iac-render'),
     path('bundle/', views.terraform_bundle_view, name='iac-bundle'),
 ]

@@ -13,5 +13,6 @@ export const syncIaCStackCmdb = (id) => request.post(`/iac/stacks/${id}/sync_cmd
 
 // ====== 目录与渲染 ======
 export const getIaCCatalog = () => request.get('/iac/catalog/')
+export const getIaCRegions = (params) => request.get('/iac/regions/', { params })
 export const renderIaCTerraform = (data) => request.post('/iac/render/', data)
 export const downloadIaCBundle = (data) => request.post('/iac/bundle/', data, { responseType: 'blob' })

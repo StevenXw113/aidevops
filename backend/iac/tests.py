@@ -90,8 +90,12 @@ class TerraformIacTests(TestCase):
         payload = response.json()
         self.assertIn('aliyun', payload['providers'])
         self.assertIn('huaweicloud', payload['providers'])
+        self.assertIn('tencent', payload['providers'])
+        self.assertIn('aws', payload['providers'])
         self.assertIn('sections', payload['providers']['aliyun'])
         self.assertIn('secret_fields', payload['providers']['huaweicloud'])
+        self.assertIn('regions', payload['providers']['tencent'])
+        self.assertIn('zone_options', payload['providers']['aws'])
 
     def test_render_endpoint_generates_aliyun_project_with_optional_resources(self):
         payload = copy.deepcopy(self.aliyun_payload)
@@ -444,3 +448,47 @@ class TerraformIacTests(TestCase):
         self.assertEqual(response.json()['summary']['resource_count'], 7)
         self.assertTrue(TerraformResourceBinding.objects.filter(stack_id=stack_id, resource_key='compute_2').exists())
         self.assertTrue(TerraformResourceBinding.objects.filter(stack_id=stack_id, resource_key='object_storage_2').exists())
+
+    def test_tencent_render_generates_tencentcloud_project(self):
+        payload = copy.deepcopy(self.aliyun_payload)
+        payload['cloud_provider'] = 'tencent'
+        payload['region'] = 'ap-guangzhou'
+        payload['zone'] = 'ap-guangzhou-3'
+        payload['config']['compute']['instance_type'] = 'S5.LARGE2'
+        payload['config']['compute']['system_disk_type'] = 'CLOUD_SSD'
+        payload['config']['resources']['rds']['enabled'] = True
+        payload['config']['resources']['rds']['instance_type'] = 'MYSQL5.7.HA.LARGE'
+
+        response = self.client.post('/api/iac/render/', payload, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        rendered = response.json()
+        self.assertIn('tencentcloudstack/tencentcloud', rendered['files']['versions.tf'])
+        main_tf = rendered['files']['main.tf']
+        self.assertIn('resource "tencentcloud_vpc" "this"', main_tf)
+        self.assertIn('resource "tencentcloud_instance" "this"', main_tf)
+        self.assertIn('resource "tencentcloud_mysql_instance" "rds"', main_tf)
+        self.assertIn('tencentcloud_vpc.this.id', rendered['files']['outputs.tf'])
+
+    def test_aws_render_generates_aws_project(self):
+        payload = copy.deepcopy(self.aliyun_payload)
+        payload['cloud_provider'] = 'aws'
+        payload['region'] = 'us-east-1'
+        payload['zone'] = 'us-east-1a'
+        payload['config']['compute']['instance_type'] = 't3.large'
+        payload['config']['compute']['system_disk_type'] = 'gp3'
+        payload['config']['resources']['redis']['enabled'] = True
+        payload['config']['resources']['redis']['node_type'] = 'cache.t3.micro'
+        payload['config']['resources']['object_storage']['enabled'] = True
+
+        response = self.client.post('/api/iac/render/', payload, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        rendered = response.json()
+        self.assertIn('hashicorp/aws', rendered['files']['versions.tf'])
+        main_tf = rendered['files']['main.tf']
+        self.assertIn('resource "aws_vpc" "this"', main_tf)
+        self.assertIn('resource "aws_instance" "this"', main_tf)
+        self.assertIn('resource "aws_elasticache_cluster" "redis"', main_tf)
+        self.assertIn('resource "aws_s3_bucket" "bucket"', main_tf)
+        self.assertIn('aws_vpc.this.id', rendered['files']['outputs.tf'])

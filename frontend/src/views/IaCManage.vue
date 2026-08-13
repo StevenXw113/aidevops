@@ -5,7 +5,7 @@
         <div class="release-hero-title-row release-hero-title-inline">
           <span class="release-header-icon iac-header-icon"><el-icon><SetUp /></el-icon></span>
           <h2>IaC 方案</h2>
-          <p class="subtitle inline-subtitle iac-hero-desc">基于 Terraform 管理阿里云 / 华为云基础设施，支持渲染、下载、执行与 CMDB 同步。</p>
+          <p class="subtitle inline-subtitle iac-hero-desc">基于 Terraform 管理阿里云 / 腾讯云 / 华为云 / AWS 基础设施，支持渲染、下载、执行与 CMDB 同步。</p>
         </div>
       </div>
     </section>
@@ -354,6 +354,7 @@ import {
   executeIaCStack,
   syncIaCStackCmdb,
   getIaCCatalog,
+  getIaCRegions,
 } from '@/api/modules/iac'
 
 const stacks = ref([])
@@ -361,6 +362,7 @@ const loading = ref(false)
 const activeTab = ref('stacks')
 const searchKeyword = ref('')
 const catalog = ref({})
+const dynamicRegions = ref({})
 const formLoading = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
@@ -422,29 +424,35 @@ const filteredStacks = computed(() => {
 })
 
 const providerMeta = computed(() => catalog.value[form.cloud_provider] || null)
-const regionOptions = computed(() => providerMeta.value?.regions || [])
+const dynamicProviderRegions = computed(() => dynamicRegions.value[form.cloud_provider] || null)
+const regionOptions = computed(() => {
+  const dynamic = dynamicProviderRegions.value?.regions
+  if (dynamic && dynamic.length) return dynamic
+  return providerMeta.value?.regions || []
+})
 const zoneOptions = computed(() => {
   const region = form.region
-  if (!providerMeta.value?.zone_options || !region) return []
-  return providerMeta.value.zone_options[region] || []
+  if (!region) return []
+  const dynamic = dynamicProviderRegions.value?.zones
+  if (dynamic && dynamic[region] && dynamic[region].length) return dynamic[region]
+  return providerMeta.value?.zone_options?.[region] || []
 })
 const formSections = computed(() => providerMeta.value?.sections || [])
 
 const secretFields = computed(() => {
   const provider = form.cloud_provider || currentStack.value?.cloud_provider || ''
-  if (provider === 'aliyun') {
-    return [
-      { key: 'alicloud_access_key', label: 'Access Key' },
-      { key: 'alicloud_secret_key', label: 'Secret Key' },
-    ]
+  const prefixMap = {
+    aliyun: 'alicloud',
+    huaweicloud: 'huaweicloud',
+    tencent: 'tencentcloud',
+    aws: 'aws',
   }
-  if (provider === 'huaweicloud') {
-    return [
-      { key: 'huaweicloud_access_key', label: 'Access Key' },
-      { key: 'huaweicloud_secret_key', label: 'Secret Key' },
-    ]
-  }
-  return []
+  const prefix = prefixMap[provider] || provider
+  if (!prefix) return []
+  return [
+    { key: `${prefix}_access_key`, label: 'Access Key' },
+    { key: `${prefix}_secret_key`, label: 'Secret Key' },
+  ]
 })
 
 function getByPath(obj, path) {
@@ -490,14 +498,23 @@ function resetForm() {
 function onProviderChange(provider) {
   const meta = catalog.value[provider]
   form.config = JSON.parse(JSON.stringify(meta?.defaults || {}))
-  form.region = meta?.regions?.[0]?.value || ''
+  const dynamic = dynamicRegions.value[provider]
+  const regions = dynamic?.regions?.length ? dynamic.regions : (meta?.regions || [])
+  form.region = regions[0]?.value || ''
   onRegionChange()
 }
 
 function onRegionChange() {
-  const meta = providerMeta.value
-  if (!meta?.zone_options || !form.region) return
-  form.zone = meta.zone_options[form.region]?.[0]?.value || ''
+  if (!form.region) {
+    form.zone = ''
+    return
+  }
+  const dynamic = dynamicRegions.value[form.cloud_provider]
+  let zones = dynamic?.zones?.[form.region]
+  if (!zones || !zones.length) {
+    zones = providerMeta.value?.zone_options?.[form.region] || []
+  }
+  form.zone = zones[0]?.value || ''
 }
 
 function executionStatusLabel(status, action) {
@@ -533,6 +550,19 @@ async function fetchCatalog() {
     catalog.value = data.providers || data || {}
   } catch (e) {
     // 错误由拦截器统一提示
+  }
+  fetchDynamicRegions()
+}
+
+async function fetchDynamicRegions() {
+  try {
+    const data = await getIaCRegions({ live: 1 })
+    const providers = data.providers || {}
+    if (Object.keys(providers).length) {
+      dynamicRegions.value = providers
+    }
+  } catch (e) {
+    // 动态区域不可用时不阻塞，回退到静态 catalog
   }
 }
 

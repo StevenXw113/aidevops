@@ -4,10 +4,14 @@
 class TerraformStack(models.Model):
     PROVIDER_ALIYUN = 'aliyun'
     PROVIDER_HUAWEICLOUD = 'huaweicloud'
+    PROVIDER_TENCENT = 'tencent'
+    PROVIDER_AWS = 'aws'
 
     PROVIDER_CHOICES = [
         (PROVIDER_ALIYUN, '阿里云'),
         (PROVIDER_HUAWEICLOUD, '华为云'),
+        (PROVIDER_TENCENT, '腾讯云'),
+        (PROVIDER_AWS, 'AWS'),
     ]
 
     name = models.CharField('方案名称', max_length=64)

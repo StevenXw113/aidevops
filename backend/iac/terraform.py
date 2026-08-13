@@ -290,6 +290,273 @@ PROVIDER_CATALOG = {
         ],
         'relation_types': RELATION_TYPE_OPTIONS,
     },
+    'tencent': {
+        'label': '腾讯云',
+        'provider_source': 'tencentcloudstack/tencentcloud',
+        'provider_version': '~> 1.81.0',
+        'provider_name': 'tencentcloud',
+        'description': '生成腾讯云 VPC、子网、安全组、CVM、以及可选的 MySQL、Redis、CLB、NAT 和 COS Terraform 工程。',
+        'default_stack_name': 'prod-web',
+        'default_zone': 'ap-guangzhou-3',
+        'regions': [
+            {'value': 'ap-guangzhou', 'label': '华南-广州'},
+            {'value': 'ap-shanghai', 'label': '华东-上海'},
+            {'value': 'ap-beijing', 'label': '华北-北京'},
+            {'value': 'ap-shenzhen-fsi', 'label': '华南-深圳金融'},
+        ],
+        'zone_options': {
+            'ap-guangzhou': [
+                {'value': 'ap-guangzhou-3', 'label': '广州三区'},
+                {'value': 'ap-guangzhou-4', 'label': '广州四区'},
+                {'value': 'ap-guangzhou-6', 'label': '广州六区'},
+            ],
+            'ap-shanghai': [
+                {'value': 'ap-shanghai-2', 'label': '上海二区'},
+                {'value': 'ap-shanghai-4', 'label': '上海四区'},
+            ],
+            'ap-beijing': [
+                {'value': 'ap-beijing-3', 'label': '北京三区'},
+                {'value': 'ap-beijing-4', 'label': '北京四区'},
+            ],
+            'ap-shenzhen-fsi': [
+                {'value': 'ap-shenzhen-fsi-1', 'label': '深圳金融一区'},
+            ],
+        },
+        'defaults': {
+            'metadata': {'project_name': '', 'business_line': '', 'environment': 'prod', 'owner': ''},
+            'network': {'vpc_cidr': '10.30.0.0/16', 'subnet_cidr': '10.30.1.0/24', 'open_ingress_ports': [22, 80, 443]},
+            'compute': {
+                'instance_name': 'prod-web-01',
+                'instance_type': 'S5.LARGE2',
+                'image_id': 'img-487yqw90',
+                'system_disk_type': 'CLOUD_SSD',
+                'system_disk_size': 50,
+                'public_bandwidth': 5,
+                'instances': [
+                    {
+                        'instance_name': 'prod-web-01',
+                        'instance_type': 'S5.LARGE2',
+                        'image_id': 'img-487yqw90',
+                        'system_disk_type': 'CLOUD_SSD',
+                        'system_disk_size': 50,
+                        'public_bandwidth': 5,
+                    }
+                ],
+            },
+            'resources': {
+                'rds': {'enabled': False, 'name': 'prod-mysql', 'instance_type': 'MYSQL5.7.HA.LARGE', 'engine': 'MySQL', 'engine_version': '5.7', 'storage_gb': 100, 'db_name': 'appdb'},
+                'redis': {'enabled': False, 'name': 'prod-redis', 'instance_type': 'REDIS_5.0_2G', 'engine_version': '5.0'},
+                'load_balancer': {'enabled': False, 'name': 'prod-clb', 'address_type': 'OPEN', 'bandwidth': 5},
+                'nat_gateway': {'enabled': False, 'name': 'prod-nat', 'bandwidth': 10},
+                'object_storage': {
+                    'enabled': False,
+                    'bucket_name': 'aidevops-prod-artifacts',
+                    'acl': 'private',
+                    'storage_class': 'STANDARD',
+                    'buckets': [
+                        {
+                            'bucket_name': 'aidevops-prod-artifacts',
+                            'acl': 'private',
+                            'storage_class': 'STANDARD',
+                        }
+                    ],
+                },
+            },
+            'topology': {'relations': []},
+        },
+        'sections': [
+            {'key': 'metadata', 'label': '治理信息', 'fields': [
+                {'path': 'metadata.project_name', 'label': '项目标识', 'type': 'text'},
+                {'path': 'metadata.business_line', 'label': '系统', 'type': 'text'},
+                {'path': 'metadata.environment', 'label': '环境', 'type': 'select', 'options': ENV_CHOICES},
+                {'path': 'metadata.owner', 'label': '负责人', 'type': 'text'},
+            ]},
+            {'key': 'network', 'label': '网络', 'fields': [
+                {'path': 'network.vpc_cidr', 'label': 'VPC CIDR', 'type': 'text'},
+                {'path': 'network.subnet_cidr', 'label': '子网 CIDR', 'type': 'text'},
+                {'path': 'network.open_ingress_ports', 'label': '开放端口', 'type': 'ports'},
+            ]},
+            {'key': 'compute', 'label': '服务器', 'fields': [
+                {'path': 'compute.instance_name', 'label': 'CVM 实例名', 'type': 'text'},
+                {'path': 'compute.instance_type', 'label': '实例规格', 'type': 'text'},
+                {'path': 'compute.image_id', 'label': '镜像 ID', 'type': 'text'},
+                {'path': 'compute.system_disk_type', 'label': '系统盘类型', 'type': 'select', 'options': ['CLOUD_SSD', 'CLOUD_BASIC', 'CLOUD_PREMIUM']},
+                {'path': 'compute.system_disk_size', 'label': '系统盘大小(GB)', 'type': 'number', 'min': 50, 'max': 1024},
+                {'path': 'compute.public_bandwidth', 'label': '公网带宽(Mbps)', 'type': 'number', 'min': 0, 'max': 100},
+            ]},
+            {'key': 'rds', 'label': 'MySQL', 'fields': [
+                {'path': 'resources.rds.enabled', 'label': '启用 MySQL', 'type': 'switch'},
+                {'path': 'resources.rds.name', 'label': 'MySQL 名称', 'type': 'text'},
+                {'path': 'resources.rds.instance_type', 'label': '实例规格', 'type': 'text'},
+                {'path': 'resources.rds.engine_version', 'label': '引擎版本', 'type': 'text'},
+                {'path': 'resources.rds.storage_gb', 'label': '存储(GB)', 'type': 'number', 'min': 20, 'max': 3000},
+                {'path': 'resources.rds.db_name', 'label': '默认库名', 'type': 'text'},
+            ]},
+            {'key': 'redis', 'label': 'Redis', 'fields': [
+                {'path': 'resources.redis.enabled', 'label': '启用 Redis', 'type': 'switch'},
+                {'path': 'resources.redis.name', 'label': 'Redis 名称', 'type': 'text'},
+                {'path': 'resources.redis.instance_type', 'label': '实例规格', 'type': 'text'},
+                {'path': 'resources.redis.engine_version', 'label': '引擎版本', 'type': 'text'},
+            ]},
+            {'key': 'load_balancer', 'label': 'CLB', 'fields': [
+                {'path': 'resources.load_balancer.enabled', 'label': '启用 CLB', 'type': 'switch'},
+                {'path': 'resources.load_balancer.name', 'label': 'CLB 名称', 'type': 'text'},
+                {'path': 'resources.load_balancer.address_type', 'label': '地址类型', 'type': 'select', 'options': ['OPEN', 'INTERNAL']},
+                {'path': 'resources.load_balancer.bandwidth', 'label': '带宽(Mbps)', 'type': 'number', 'min': 1, 'max': 100},
+            ]},
+            {'key': 'nat_gateway', 'label': 'NAT 网关', 'fields': [
+                {'path': 'resources.nat_gateway.enabled', 'label': '启用 NAT', 'type': 'switch'},
+                {'path': 'resources.nat_gateway.name', 'label': 'NAT 名称', 'type': 'text'},
+                {'path': 'resources.nat_gateway.bandwidth', 'label': 'EIP 带宽(Mbps)', 'type': 'number', 'min': 1, 'max': 200},
+            ]},
+            {'key': 'object_storage', 'label': '对象存储', 'fields': [
+                {'path': 'resources.object_storage.enabled', 'label': '启用 COS', 'type': 'switch'},
+                {'path': 'resources.object_storage.bucket_name', 'label': 'Bucket 名称', 'type': 'text'},
+                {'path': 'resources.object_storage.acl', 'label': '访问控制', 'type': 'select', 'options': ['private', 'public-read']},
+                {'path': 'resources.object_storage.storage_class', 'label': '存储类型', 'type': 'select', 'options': ['STANDARD', 'STANDARD_IA', 'ARCHIVE']},
+            ]},
+        ],
+        'secret_fields': [
+            {'key': 'access_key', 'label': 'Access Key', 'type': 'password', 'required': True},
+            {'key': 'secret_key', 'label': 'Secret Key', 'type': 'password', 'required': True},
+            {'key': 'instance_password', 'label': '实例登录密码', 'type': 'password', 'required': True},
+            {'key': 'db_password', 'label': 'MySQL 管理密码', 'type': 'password', 'required': False},
+        ],
+        'relation_types': RELATION_TYPE_OPTIONS,
+    },
+    'aws': {
+        'label': 'AWS',
+        'provider_source': 'hashicorp/aws',
+        'provider_version': '~> 5.0',
+        'provider_name': 'aws',
+        'description': '生成 AWS VPC、Subnet、Security Group、EC2、以及可选的 RDS、ElastiCache、ALB、NAT 和 S3 Terraform 工程。',
+        'default_stack_name': 'prod-web',
+        'default_zone': 'us-east-1a',
+        'regions': [
+            {'value': 'us-east-1', 'label': '美东-弗吉尼亚'},
+            {'value': 'us-west-2', 'label': '美西-俄勒冈'},
+            {'value': 'ap-southeast-1', 'label': '亚太-新加坡'},
+            {'value': 'ap-northeast-1', 'label': '亚太-东京'},
+        ],
+        'zone_options': {
+            'us-east-1': [
+                {'value': 'us-east-1a', 'label': 'us-east-1a'},
+                {'value': 'us-east-1b', 'label': 'us-east-1b'},
+            ],
+            'us-west-2': [
+                {'value': 'us-west-2a', 'label': 'us-west-2a'},
+                {'value': 'us-west-2b', 'label': 'us-west-2b'},
+            ],
+            'ap-southeast-1': [
+                {'value': 'ap-southeast-1a', 'label': 'ap-southeast-1a'},
+                {'value': 'ap-southeast-1b', 'label': 'ap-southeast-1b'},
+            ],
+            'ap-northeast-1': [
+                {'value': 'ap-northeast-1a', 'label': 'ap-northeast-1a'},
+                {'value': 'ap-northeast-1c', 'label': 'ap-northeast-1c'},
+            ],
+        },
+        'defaults': {
+            'metadata': {'project_name': '', 'business_line': '', 'environment': 'prod', 'owner': ''},
+            'network': {'vpc_cidr': '10.40.0.0/16', 'subnet_cidr': '10.40.1.0/24', 'open_ingress_ports': [22, 80, 443]},
+            'compute': {
+                'instance_name': 'prod-web-01',
+                'instance_type': 't3.large',
+                'image_id': 'ami-0c55b159cbfafe1f0',
+                'system_disk_type': 'gp3',
+                'system_disk_size': 40,
+                'public_bandwidth': 5,
+                'instances': [
+                    {
+                        'instance_name': 'prod-web-01',
+                        'instance_type': 't3.large',
+                        'image_id': 'ami-0c55b159cbfafe1f0',
+                        'system_disk_type': 'gp3',
+                        'system_disk_size': 40,
+                        'public_bandwidth': 5,
+                    }
+                ],
+            },
+            'resources': {
+                'rds': {'enabled': False, 'name': 'prod-mysql', 'instance_class': 'db.t3.medium', 'engine': 'mysql', 'engine_version': '8.0', 'storage_gb': 20, 'db_name': 'appdb'},
+                'redis': {'enabled': False, 'name': 'prod-redis', 'node_type': 'cache.t3.micro', 'engine_version': '6.2'},
+                'load_balancer': {'enabled': False, 'name': 'prod-alb', 'type': 'application', 'bandwidth': 5},
+                'nat_gateway': {'enabled': False, 'name': 'prod-nat', 'bandwidth': 5},
+                'object_storage': {
+                    'enabled': False,
+                    'bucket_name': 'aidevops-prod-artifacts',
+                    'acl': 'private',
+                    'storage_class': 'STANDARD',
+                    'buckets': [
+                        {
+                            'bucket_name': 'aidevops-prod-artifacts',
+                            'acl': 'private',
+                            'storage_class': 'STANDARD',
+                        }
+                    ],
+                },
+            },
+            'topology': {'relations': []},
+        },
+        'sections': [
+            {'key': 'metadata', 'label': '治理信息', 'fields': [
+                {'path': 'metadata.project_name', 'label': '项目标识', 'type': 'text'},
+                {'path': 'metadata.business_line', 'label': '系统', 'type': 'text'},
+                {'path': 'metadata.environment', 'label': '环境', 'type': 'select', 'options': ENV_CHOICES},
+                {'path': 'metadata.owner', 'label': '负责人', 'type': 'text'},
+            ]},
+            {'key': 'network', 'label': '网络', 'fields': [
+                {'path': 'network.vpc_cidr', 'label': 'VPC CIDR', 'type': 'text'},
+                {'path': 'network.subnet_cidr', 'label': '子网 CIDR', 'type': 'text'},
+                {'path': 'network.open_ingress_ports', 'label': '开放端口', 'type': 'ports'},
+            ]},
+            {'key': 'compute', 'label': '服务器', 'fields': [
+                {'path': 'compute.instance_name', 'label': 'EC2 实例名', 'type': 'text'},
+                {'path': 'compute.instance_type', 'label': '实例规格', 'type': 'text'},
+                {'path': 'compute.image_id', 'label': 'AMI ID', 'type': 'text'},
+                {'path': 'compute.system_disk_type', 'label': '系统盘类型', 'type': 'select', 'options': ['gp3', 'gp2', 'io1']},
+                {'path': 'compute.system_disk_size', 'label': '系统盘大小(GB)', 'type': 'number', 'min': 20, 'max': 500},
+                {'path': 'compute.public_bandwidth', 'label': '公网带宽(Mbps)', 'type': 'number', 'min': 0, 'max': 100},
+            ]},
+            {'key': 'rds', 'label': 'RDS', 'fields': [
+                {'path': 'resources.rds.enabled', 'label': '启用 RDS', 'type': 'switch'},
+                {'path': 'resources.rds.name', 'label': 'RDS 名称', 'type': 'text'},
+                {'path': 'resources.rds.instance_class', 'label': '实例规格', 'type': 'text'},
+                {'path': 'resources.rds.engine', 'label': '数据库引擎', 'type': 'select', 'options': ['mysql', 'postgres']},
+                {'path': 'resources.rds.engine_version', 'label': '引擎版本', 'type': 'text'},
+                {'path': 'resources.rds.storage_gb', 'label': '存储(GB)', 'type': 'number', 'min': 20, 'max': 1000},
+                {'path': 'resources.rds.db_name', 'label': '默认库名', 'type': 'text'},
+            ]},
+            {'key': 'redis', 'label': 'ElastiCache', 'fields': [
+                {'path': 'resources.redis.enabled', 'label': '启用 Redis', 'type': 'switch'},
+                {'path': 'resources.redis.name', 'label': '集群名称', 'type': 'text'},
+                {'path': 'resources.redis.node_type', 'label': '节点规格', 'type': 'text'},
+                {'path': 'resources.redis.engine_version', 'label': '引擎版本', 'type': 'text'},
+            ]},
+            {'key': 'load_balancer', 'label': 'ALB', 'fields': [
+                {'path': 'resources.load_balancer.enabled', 'label': '启用 ALB', 'type': 'switch'},
+                {'path': 'resources.load_balancer.name', 'label': 'ALB 名称', 'type': 'text'},
+                {'path': 'resources.load_balancer.type', 'label': '负载均衡类型', 'type': 'select', 'options': ['application', 'network']},
+            ]},
+            {'key': 'nat_gateway', 'label': 'NAT 网关', 'fields': [
+                {'path': 'resources.nat_gateway.enabled', 'label': '启用 NAT', 'type': 'switch'},
+                {'path': 'resources.nat_gateway.name', 'label': 'NAT 名称', 'type': 'text'},
+            ]},
+            {'key': 'object_storage', 'label': '对象存储', 'fields': [
+                {'path': 'resources.object_storage.enabled', 'label': '启用 S3', 'type': 'switch'},
+                {'path': 'resources.object_storage.bucket_name', 'label': 'Bucket 名称', 'type': 'text'},
+                {'path': 'resources.object_storage.acl', 'label': '访问控制', 'type': 'select', 'options': ['private', 'public-read']},
+                {'path': 'resources.object_storage.storage_class', 'label': '存储类型', 'type': 'select', 'options': ['STANDARD', 'INTELLIGENT_TIERING', 'GLACIER']},
+            ]},
+        ],
+        'secret_fields': [
+            {'key': 'access_key', 'label': 'Access Key', 'type': 'password', 'required': True},
+            {'key': 'secret_key', 'label': 'Secret Key', 'type': 'password', 'required': True},
+            {'key': 'instance_password', 'label': '实例登录密码', 'type': 'password', 'required': False},
+            {'key': 'db_password', 'label': 'RDS 管理密码', 'type': 'password', 'required': False},
+        ],
+        'relation_types': RELATION_TYPE_OPTIONS,
+    },
 }
 
 
@@ -616,10 +883,15 @@ def _normalize_rds(cloud_provider, config):
     config['storage_gb'] = _coerce_int(config.get('storage_gb'), 'resources.rds.storage_gb', 20)
     if not config['name']:
         raise ValidationError({'config': '启用 RDS 时必须填写资源名称。'})
-    if cloud_provider == 'aliyun':
+    if cloud_provider in ('aliyun', 'tencent'):
         config['instance_type'] = str(config.get('instance_type') or '').strip()
         if not config['instance_type']:
-            raise ValidationError({'config': '阿里云 RDS 需要 instance_type。'})
+            label = '阿里云' if cloud_provider == 'aliyun' else '腾讯云'
+            raise ValidationError({'config': f'{label} RDS 需要 instance_type。'})
+    elif cloud_provider == 'aws':
+        config['instance_class'] = str(config.get('instance_class') or '').strip()
+        if not config['instance_class']:
+            raise ValidationError({'config': 'AWS RDS 需要 instance_class。'})
     else:
         config['flavor'] = str(config.get('flavor') or '').strip()
         config['volume_type'] = str(config.get('volume_type') or 'CLOUDSSD').strip() or 'CLOUDSSD'
@@ -636,6 +908,14 @@ def _normalize_redis(cloud_provider, config):
         config['instance_class'] = str(config.get('instance_class') or '').strip()
         if not config['instance_class']:
             raise ValidationError({'config': '阿里云 Redis 需要 instance_class。'})
+    elif cloud_provider == 'tencent':
+        config['instance_type'] = str(config.get('instance_type') or '').strip()
+        if not config['instance_type']:
+            raise ValidationError({'config': '腾讯云 Redis 需要 instance_type。'})
+    elif cloud_provider == 'aws':
+        config['node_type'] = str(config.get('node_type') or '').strip()
+        if not config['node_type']:
+            raise ValidationError({'config': 'AWS Redis 需要 node_type。'})
     else:
         config['capacity'] = _coerce_int(config.get('capacity'), 'resources.redis.capacity', 1)
         config['flavor'] = str(config.get('flavor') or '').strip()
@@ -650,6 +930,12 @@ def _normalize_load_balancer(cloud_provider, config):
     if cloud_provider == 'aliyun':
         config['address_type'] = str(config.get('address_type') or 'internet').strip() or 'internet'
         config['spec'] = str(config.get('spec') or '').strip() or 'slb.s2.small'
+    elif cloud_provider == 'tencent':
+        config['address_type'] = str(config.get('address_type') or 'OPEN').strip() or 'OPEN'
+        config['bandwidth'] = _coerce_int(config.get('bandwidth'), 'resources.load_balancer.bandwidth', 1)
+    elif cloud_provider == 'aws':
+        config['type'] = str(config.get('type') or 'application').strip() or 'application'
+        config['bandwidth'] = _coerce_int(config.get('bandwidth'), 'resources.load_balancer.bandwidth', 1)
     else:
         config['type'] = str(config.get('type') or 'External').strip() or 'External'
         config['bandwidth'] = _coerce_int(config.get('bandwidth'), 'resources.load_balancer.bandwidth', 1)
@@ -659,7 +945,7 @@ def _normalize_nat_gateway(cloud_provider, config):
     config['name'] = str(config.get('name') or '').strip()
     if not config['name']:
         raise ValidationError({'config': '启用 NAT 网关时必须填写资源名称。'})
-    if cloud_provider == 'aliyun':
+    if cloud_provider in ('aliyun', 'tencent'):
         config['bandwidth'] = _coerce_int(config.get('bandwidth'), 'resources.nat_gateway.bandwidth', 1)
     else:
         config['spec'] = str(config.get('spec') or '').strip() or '1'
@@ -964,7 +1250,14 @@ def _build_variables_tf(payload):
 
 
 def _build_main_tf(payload):
-    return _build_aliyun_main_tf(payload) if payload['cloud_provider'] == 'aliyun' else _build_huaweicloud_main_tf(payload)
+    builders = {
+        'aliyun': _build_aliyun_main_tf,
+        'huaweicloud': _build_huaweicloud_main_tf,
+        'tencent': _build_tencent_main_tf,
+        'aws': _build_aws_main_tf,
+    }
+    builder = builders.get(payload['cloud_provider'], _build_huaweicloud_main_tf)
+    return builder(payload)
 
 
 def _build_aliyun_main_tf(payload):
@@ -1092,8 +1385,186 @@ def _build_huaweicloud_main_tf(payload):
     return '\n'.join(lines).rstrip() + '\n'
 
 
+def _build_tencent_main_tf(payload):
+    config = payload['config']
+    network = config['network']
+    resources = config['resources']
+    compute_instances = _get_compute_instances(config)
+    bucket_items = _get_enabled_buckets(config)
+    lines = [
+        'resource "tencentcloud_vpc" "this" {', f'  name       = {_hcl_string(payload["name"] + "-vpc")}', f'  cidr_block = {_hcl_string(network["vpc_cidr"])}', '}', '',
+        'resource "tencentcloud_subnet" "this" {', '  vpc_id            = tencentcloud_vpc.this.id', f'  name              = {_hcl_string(payload["name"] + "-subnet")}', f'  cidr_block        = {_hcl_string(network["subnet_cidr"])}', f'  availability_zone = {_hcl_string(payload["zone"])}', '}', '',
+        'resource "tencentcloud_security_group" "this" {', f'  name        = {_hcl_string(payload["name"] + "-sg")}', '  description = "Managed by AiDevOps Terraform generator"', '}', '',
+        'resource "tencentcloud_security_group_rule" "ingress" {', f'  count             = {len(network["open_ingress_ports"])}', '  security_group_id = tencentcloud_security_group.this.id', '  type              = "ingress"', '  cidr_ip           = "0.0.0.0/0"', '  ip_protocol       = "TCP"', f'  port_range        = element({_hcl_list(network["open_ingress_ports"])}, count.index)', '  policy            = "ACCEPT"', '}', '',
+    ]
+    for index, compute in enumerate(compute_instances):
+        resource_name = _resource_suffix(index)
+        lines.extend([
+            f'resource "tencentcloud_instance" "{resource_name}" {{',
+            f'  instance_name     = {_hcl_string(compute["instance_name"])}',
+            f'  image_id          = {_hcl_string(compute["image_id"])}',
+            f'  instance_type     = {_hcl_string(compute["instance_type"])}',
+            f'  availability_zone = {_hcl_string(payload["zone"])}',
+            '  vpc_id            = tencentcloud_vpc.this.id',
+            '  subnet_id         = tencentcloud_subnet.this.id',
+            '  security_groups   = [tencentcloud_security_group.this.id]',
+            f'  system_disk_type  = {_hcl_string(compute["system_disk_type"])}',
+            f'  system_disk_size  = {compute["system_disk_size"]}',
+            '  password          = var.instance_password',
+            '}',
+            '',
+        ])
+        if compute['public_bandwidth'] > 0:
+            eip_name = 'this' if index == 0 else f'this_{index + 1}'
+            lines.extend([
+                f'resource "tencentcloud_eip" "{eip_name}" {{',
+                f'  name = {_hcl_string(payload["name"] + f"-eip-{index + 1:02d}")}',
+                '}',
+                '',
+                f'resource "tencentcloud_eip_association" "{eip_name}" {{',
+                f'  eip_id      = tencentcloud_eip.{eip_name}.id',
+                f'  instance_id = tencentcloud_instance.{resource_name}.id',
+                '}',
+                '',
+            ])
+    if resources['rds']['enabled']:
+        rds = resources['rds']; lines.extend(['resource "tencentcloud_mysql_instance" "rds" {', f'  mysql_version = {_hcl_string(rds["engine_version"])}', f'  instance_name = {_hcl_string(rds["name"])}', f'  instance_type = {_hcl_string(rds["instance_type"])}', f'  memory        = 4000', f'  volume        = {rds["storage_gb"]}', f'  engine_version = {_hcl_string(rds["engine_version"])}', '  charge_type   = "POSTPAID"', '  vpc_id        = tencentcloud_vpc.this.id', '  subnet_id     = tencentcloud_subnet.this.id', f'  availability_zone = {_hcl_string(payload["zone"])}', '  root_password = var.db_password', '}', ''])
+    if resources['redis']['enabled']:
+        redis = resources['redis']; lines.extend(['resource "tencentcloud_redis_instance" "redis" {', f'  availability_zone = {_hcl_string(payload["zone"])}', f'  name              = {_hcl_string(redis["name"])}', f'  type              = {_hcl_string(redis["instance_type"])}', f'  engine_version    = {_hcl_string(redis["engine_version"])}', '  charge_type       = "POSTPAID"', '  vpc_id            = tencentcloud_vpc.this.id', '  subnet_id         = tencentcloud_subnet.this.id', '}', ''])
+    if resources['load_balancer']['enabled']:
+        lb = resources['load_balancer']; lines.extend(['resource "tencentcloud_clb_instance" "lb" {', f'  name            = {_hcl_string(lb["name"])}', f'  network_type    = {_hcl_string(lb["address_type"])}', '  clb_id          = "NEW"', '  security_groups = [tencentcloud_security_group.this.id]', '  vpc_id          = tencentcloud_vpc.this.id', '  subnet_id       = tencentcloud_subnet.this.id', '}', ''])
+    if resources['nat_gateway']['enabled']:
+        nat = resources['nat_gateway']; lines.extend(['resource "tencentcloud_nat_gateway" "nat" {', f'  name             = {_hcl_string(nat["name"])}', '  vpc_id           = tencentcloud_vpc.this.id', '  bandwidth        = 5', '  max_concurrent   = 1000000', '  assigned_eip_set = []', '}', '', 'resource "tencentcloud_eip" "nat" {', f'  name = {_hcl_string(nat["name"] + "-eip")}', '}', '', 'resource "tencentcloud_nat_gateway_attachment" "nat" {', '  nat_gateway_id = tencentcloud_nat_gateway.nat.id', '  eip_id         = tencentcloud_eip.nat.id', '}', ''])
+    for index, bucket in enumerate(bucket_items):
+        resource_name = 'bucket' if index == 0 else f'bucket_{index + 1}'
+        lines.extend([
+            f'resource "tencentcloud_cos_bucket" "{resource_name}" {{',
+            f'  bucket = {_hcl_string(bucket["bucket_name"] + f"-{payload['region']}")}',
+            f'  acl    = {_hcl_string(bucket["acl"])}',
+            '}',
+            '',
+        ])
+    return '\n'.join(lines).rstrip() + '\n'
+
+
+def _build_aws_main_tf(payload):
+    config = payload['config']
+    network = config['network']
+    resources = config['resources']
+    compute_instances = _get_compute_instances(config)
+    bucket_items = _get_enabled_buckets(config)
+    lines = [
+        'resource "aws_vpc" "this" {', f'  cidr_block           = {_hcl_string(network["vpc_cidr"])}', '  enable_dns_support   = true', '  enable_dns_hostnames = true', f'  tags = {{ Name = {_hcl_string(payload["name"] + "-vpc")} }}', '}', '',
+        'resource "aws_subnet" "this" {', '  vpc_id            = aws_vpc.this.id', f'  cidr_block        = {_hcl_string(network["subnet_cidr"])}', f'  availability_zone = {_hcl_string(payload["zone"])}', '  map_public_ip_on_launch = true', f'  tags = {{ Name = {_hcl_string(payload["name"] + "-subnet")} }}', '}', '',
+        'resource "aws_internet_gateway" "this" {', '  vpc_id = aws_vpc.this.id', '}', '',
+        'resource "aws_route_table" "this" {', '  vpc_id = aws_vpc.this.id', '', '  route {', '    cidr_block = "0.0.0.0/0"', '    gateway_id = aws_internet_gateway.this.id', '  }', f'  tags = {{ Name = {_hcl_string(payload["name"] + "-rt")} }}', '}', '',
+        'resource "aws_route_table_association" "this" {', '  subnet_id      = aws_subnet.this.id', '  route_table_id = aws_route_table.this.id', '}', '',
+        'resource "aws_security_group" "this" {', '  name        = "${local.stack_name}-sg"', '  description = "Managed by AiDevOps Terraform generator"', '  vpc_id      = aws_vpc.this.id', f'  tags = {{ Name = {_hcl_string(payload["name"] + "-sg")} }}', '}', '',
+        'resource "aws_security_group_rule" "ingress" {', f'  count             = length(local.open_ingress_ports)', '  type              = "ingress"', '  from_port         = local.open_ingress_ports[count.index]', '  to_port           = local.open_ingress_ports[count.index]', '  protocol          = "tcp"', '  cidr_blocks       = ["0.0.0.0/0"]', '  security_group_id = aws_security_group.this.id', '}', '',
+        'locals {', f'  stack_name = {_hcl_string(payload["name"])}', f'  open_ingress_ports = {_hcl_list(network["open_ingress_ports"])}', '}', '',
+    ]
+    for index, compute in enumerate(compute_instances):
+        resource_name = _resource_suffix(index)
+        lines.extend([
+            f'resource "aws_instance" "{resource_name}" {{',
+            f'  ami                         = {_hcl_string(compute["image_id"])}',
+            f'  instance_type               = {_hcl_string(compute["instance_type"])}',
+            '  subnet_id                   = aws_subnet.this.id',
+            '  vpc_security_group_ids       = [aws_security_group.this.id]',
+            f'  associate_public_ip_address = {str(compute["public_bandwidth"] > 0).lower()}',
+            f'  tags = {{ Name = {_hcl_string(compute["instance_name"])} }}',
+            '',
+            '  root_block_device {',
+            f'    volume_type = {_hcl_string(compute["system_disk_type"])}',
+            f'    volume_size = {compute["system_disk_size"]}',
+            '  }',
+            '}',
+            '',
+        ])
+    if resources['rds']['enabled']:
+        rds = resources['rds']; lines.extend(['resource "aws_db_instance" "rds" {', f'  identifier            = {_hcl_string(rds["name"])}', f'  engine                = {_hcl_string(rds["engine"])}', f'  engine_version        = {_hcl_string(rds["engine_version"])}', f'  instance_class        = {_hcl_string(rds["instance_class"])}', f'  allocated_storage     = {rds["storage_gb"]}', f'  db_name               = {_hcl_string(rds["db_name"])}', '  username              = "admin"', '  password              = var.db_password', '  db_subnet_group_name  = aws_db_subnet_group.this.id', '  skip_final_snapshot   = true', '  vpc_security_group_ids = [aws_security_group.this.id]', '}', '', 'resource "aws_db_subnet_group" "this" {', '  name       = "${local.stack_name}-db-subnet"', '  subnet_ids = [aws_subnet.this.id]', '}', ''])
+    if resources['redis']['enabled']:
+        redis = resources['redis']; lines.extend(['resource "aws_elasticache_cluster" "redis" {', f'  cluster_id           = {_hcl_string(redis["name"])}', f'  engine               = "redis"', f'  engine_version       = {_hcl_string(redis["engine_version"])}', f'  node_type            = {_hcl_string(redis["node_type"])}', '  num_cache_nodes      = 1', '  parameter_group_name = "default.redis6.x"', '  security_group_ids   = [aws_security_group.this.id]', '  subnet_group_name    = aws_elasticache_subnet_group.this.name', '}', '', 'resource "aws_elasticache_subnet_group" "this" {', f'  name       = {_hcl_string(redis["name"] + "-subnet")}', '  subnet_ids = [aws_subnet.this.id]', '}', ''])
+    if resources['load_balancer']['enabled']:
+        lb = resources['load_balancer']; lines.extend(['resource "aws_lb" "lb" {', f'  name               = {_hcl_string(lb["name"])}', f'  load_balancer_type = {_hcl_string(lb["type"])}', '  internal           = false', '  security_groups    = [aws_security_group.this.id]', '  subnets            = [aws_subnet.this.id]', '}', ''])
+    if resources['nat_gateway']['enabled']:
+        nat = resources['nat_gateway']; lines.extend(['resource "aws_eip" "nat" {', f'  tags = {{ Name = {_hcl_string(nat["name"] + "-eip")} }}', '}', '', 'resource "aws_nat_gateway" "nat" {', '  allocation_id = aws_eip.nat.id', '  subnet_id     = aws_subnet.this.id', f'  tags = {{ Name = {_hcl_string(nat["name"])} }}', '}', ''])
+    for index, bucket in enumerate(bucket_items):
+        resource_name = 'bucket' if index == 0 else f'bucket_{index + 1}'
+        lines.extend([
+            f'resource "aws_s3_bucket" "{resource_name}" {{',
+            f'  bucket = {_hcl_string(bucket["bucket_name"])}',
+            '  force_destroy = true',
+            f'  tags = {{ Name = {_hcl_string(bucket["bucket_name"])} }}',
+            '}',
+            '',
+            f'resource "aws_s3_bucket_acl" "{resource_name}" {{',
+            f'  bucket = aws_s3_bucket.{resource_name}.id',
+            f'  acl    = {_hcl_string(bucket["acl"])}',
+            '}',
+            '',
+        ])
+    return '\n'.join(lines).rstrip() + '\n'
+
+
+def _output_refs(provider):
+    """Return Terraform resource reference templates for a given provider."""
+    refs = {
+        'aliyun': {
+            'instance_id': 'alicloud_instance.{name}.id',
+            'private_ip': 'alicloud_instance.{name}.private_ip',
+            'public_ip': 'try(alicloud_instance.{name}.public_ip, null)',
+            'vpc_id': 'alicloud_vpc.this.id',
+            'subnet_id': 'alicloud_vswitch.this.id',
+            'rds': 'alicloud_db_instance.rds.id',
+            'redis': 'alicloud_kvstore_instance.redis.id',
+            'load_balancer': 'alicloud_slb_load_balancer.lb.id',
+            'nat_gateway': 'alicloud_nat_gateway.nat.id',
+            'bucket': 'alicloud_oss_bucket.{name}.bucket',
+        },
+        'huaweicloud': {
+            'instance_id': 'huaweicloud_compute_instance.{name}.id',
+            'private_ip': 'huaweicloud_compute_instance.{name}.access_ip_v4',
+            'public_ip': 'try(huaweicloud_vpc_eip.{eip}.address, null)',
+            'vpc_id': 'huaweicloud_vpc.this.id',
+            'subnet_id': 'huaweicloud_vpc_subnet.this.id',
+            'rds': 'huaweicloud_rds_instance.rds.id',
+            'redis': 'huaweicloud_dcs_instance.redis.id',
+            'load_balancer': 'huaweicloud_elb_loadbalancer.lb.id',
+            'nat_gateway': 'huaweicloud_nat_gateway.nat.id',
+            'bucket': 'huaweicloud_obs_bucket.{name}.bucket',
+        },
+        'tencent': {
+            'instance_id': 'tencentcloud_instance.{name}.id',
+            'private_ip': 'tencentcloud_instance.{name}.private_ip',
+            'public_ip': 'try(tencentcloud_eip.{eip}.public_ip, null)',
+            'vpc_id': 'tencentcloud_vpc.this.id',
+            'subnet_id': 'tencentcloud_subnet.this.id',
+            'rds': 'tencentcloud_mysql_instance.rds.id',
+            'redis': 'tencentcloud_redis_instance.redis.id',
+            'load_balancer': 'tencentcloud_clb_instance.lb.id',
+            'nat_gateway': 'tencentcloud_nat_gateway.nat.id',
+            'bucket': 'tencentcloud_cos_bucket.{name}.bucket',
+        },
+        'aws': {
+            'instance_id': 'aws_instance.{name}.id',
+            'private_ip': 'aws_instance.{name}.private_ip',
+            'public_ip': 'aws_instance.{name}.public_ip',
+            'vpc_id': 'aws_vpc.this.id',
+            'subnet_id': 'aws_subnet.this.id',
+            'rds': 'aws_db_instance.rds.id',
+            'redis': 'aws_elasticache_cluster.redis.id',
+            'load_balancer': 'aws_lb.lb.id',
+            'nat_gateway': 'aws_nat_gateway.nat.id',
+            'bucket': 'aws_s3_bucket.{name}.bucket',
+        },
+    }
+    return refs.get(provider, refs['huaweicloud'])
+
+
 def _build_outputs_tf(payload):
     provider = payload['cloud_provider']
+    refs = _output_refs(provider)
     resources = payload['config']['resources']
     compute_instances = _get_compute_instances(payload['config'])
     bucket_items = _get_enabled_buckets(payload['config'])
@@ -1102,31 +1573,38 @@ def _build_outputs_tf(payload):
     public_ip_exprs = []
     for index, instance in enumerate(compute_instances):
         resource_name = _resource_suffix(index)
-        if provider == 'aliyun':
-            instance_id_exprs.append(f'alicloud_instance.{resource_name}.id')
-            private_ip_exprs.append(f'alicloud_instance.{resource_name}.private_ip')
-            public_ip_exprs.append(f'try(alicloud_instance.{resource_name}.public_ip, null)')
+        eip_name = 'this' if index == 0 else f'this_{index + 1}'
+        instance_id_exprs.append(refs['instance_id'].format(name=resource_name))
+        private_ip_exprs.append(refs['private_ip'].format(name=resource_name))
+        has_public = instance['public_bandwidth'] > 0
+        if '{eip}' in refs['public_ip']:
+            public_ip_exprs.append(refs['public_ip'].format(name=resource_name, eip=eip_name) if has_public else 'null')
         else:
-            eip_name = 'this' if index == 0 else f'this_{index + 1}'
-            instance_id_exprs.append(f'huaweicloud_compute_instance.{resource_name}.id')
-            private_ip_exprs.append(f'huaweicloud_compute_instance.{resource_name}.access_ip_v4')
-            public_ip_exprs.append(f'try(huaweicloud_vpc_eip.{eip_name}.address, null)' if instance['public_bandwidth'] > 0 else 'null')
+            public_ip_exprs.append(refs['public_ip'].format(name=resource_name))
     lines = [
         'output "instance_id" {', f'  value = {instance_id_exprs[0]}', '}', '',
         'output "instance_ids" {', f'  value = [{", ".join(instance_id_exprs)}]', '}', '',
         'output "private_ip" {', f'  value = {private_ip_exprs[0]}', '}', '',
         'output "private_ips" {', f'  value = [{", ".join(private_ip_exprs)}]', '}', '',
-        'output "vpc_id" {', f'  value = {"alicloud_vpc.this.id" if provider == "aliyun" else "huaweicloud_vpc.this.id"}', '}', '',
-        'output "subnet_id" {', f'  value = {"alicloud_vswitch.this.id" if provider == "aliyun" else "huaweicloud_vpc_subnet.this.id"}', '}', '',
+        'output "vpc_id" {', f'  value = {refs["vpc_id"]}', '}', '',
+        'output "subnet_id" {', f'  value = {refs["subnet_id"]}', '}', '',
         'output "public_ip" {', f'  value = {public_ip_exprs[0]}', '}', '',
         'output "public_ips" {', f'  value = [{", ".join(public_ip_exprs)}]', '}', '',
     ]
-    optional_outputs = {'rds': ('rds_id', 'alicloud_db_instance.rds.id' if provider == 'aliyun' else 'huaweicloud_rds_instance.rds.id'), 'redis': ('redis_id', 'alicloud_kvstore_instance.redis.id' if provider == 'aliyun' else 'huaweicloud_dcs_instance.redis.id'), 'load_balancer': ('load_balancer_id', 'alicloud_slb_load_balancer.lb.id' if provider == 'aliyun' else 'huaweicloud_elb_loadbalancer.lb.id'), 'nat_gateway': ('nat_gateway_id', 'alicloud_nat_gateway.nat.id' if provider == 'aliyun' else 'huaweicloud_nat_gateway.nat.id')}
+    optional_outputs = {
+        'rds': ('rds_id', refs['rds']),
+        'redis': ('redis_id', refs['redis']),
+        'load_balancer': ('load_balancer_id', refs['load_balancer']),
+        'nat_gateway': ('nat_gateway_id', refs['nat_gateway']),
+    }
     for key, (name, expr) in optional_outputs.items():
         if resources[key]['enabled']:
             lines.extend([f'output "{name}" {{', f'  value = {expr}', '}', ''])
     if bucket_items:
-        bucket_exprs = [f'{"alicloud_oss_bucket" if provider == "aliyun" else "huaweicloud_obs_bucket"}.{"bucket" if index == 0 else f"bucket_{index + 1}"}.bucket' for index, _ in enumerate(bucket_items)]
+        bucket_exprs = [
+            refs['bucket'].format(name='bucket' if index == 0 else f'bucket_{index + 1}')
+            for index, _ in enumerate(bucket_items)
+        ]
         lines.extend(['output "bucket_name" {', f'  value = {bucket_exprs[0]}', '}', '', 'output "bucket_names" {', f'  value = [{", ".join(bucket_exprs)}]', '}', ''])
     return '\n'.join(lines).rstrip() + '\n'
 
