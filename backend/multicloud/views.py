@@ -90,6 +90,8 @@ class CloudCredentialViewSet(EventWallModelViewSetMixin, RBACPermissionMixin, vi
     def sync_all(self, request, pk=None):
         credential = self.get_object()
         result = sync_credential_environments(credential, operator=request.user.username)
+        credential.last_sync_at = timezone.now()
+        credential.save(update_fields=['last_sync_at', 'updated_at'])
         credential.refresh_from_db()
         record_event(
             request=request,
@@ -98,7 +100,7 @@ class CloudCredentialViewSet(EventWallModelViewSetMixin, RBACPermissionMixin, vi
             action='sync_all',
             title='同步云账号环境',
             summary=result['message'],
-            result=EventRecord.RESULT_SUCCESS if result.get('success', True) else EventRecord.RESULT_FAILED,
+            result=EventRecord.RESULT_SUCCESS if result['success'] else EventRecord.RESULT_FAILED,
             severity=EventRecord.SEVERITY_INFO,
             resource_type='cloud_credential',
             resource_id=credential.id,

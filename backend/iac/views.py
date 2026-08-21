@@ -131,9 +131,11 @@ def terraform_catalog_view(request):
 def terraform_regions_view(request):
     provider = (request.query_params.get('provider') or '').strip()
     prefer_live = request.query_params.get('live', '1') != '0'
+    credential_id_raw = (request.query_params.get('credential_id') or '').strip()
+    credential_id = int(credential_id_raw) if credential_id_raw.isdigit() else None
     if not provider:
         return Response({'providers': regions_for_all_providers(prefer_live)})
-    data = get_provider_regions(provider, prefer_live=prefer_live)
+    data = get_provider_regions(provider, prefer_live=prefer_live, credential_id=credential_id)
     return Response({'provider': provider, **data})
 
 

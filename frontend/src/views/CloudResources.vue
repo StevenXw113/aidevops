@@ -77,6 +77,7 @@
         </div>
         <div class="workbench-card-actions">
           <el-button class="filter-refresh-btn" @click="fetchEnvironments"><el-icon><RefreshRight /></el-icon>刷新</el-button>
+          <el-button v-if="canManage" class="filter-refresh-btn" type="primary" @click="openEnvForm()"><el-icon><Plus /></el-icon>新增云环境</el-button>
         </div>
       </div>
       <el-table :data="environments" stripe v-loading="environmentsLoading" style="width:100%">
@@ -96,10 +97,12 @@
         <el-table-column label="月成本" width="100" align="right">
           <template #default="{ row }">￥{{ Number(row.monthly_cost || 0).toFixed(2) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
+            <el-button v-if="canManage" link type="primary" size="small" @click="openEnvForm(row)">编辑</el-button>
             <el-button v-if="canSync" link type="primary" size="small" @click="syncEnvironment(row)">资源发现</el-button>
             <el-button v-if="canSync" link type="warning" size="small" @click="syncEnvironmentCmdb(row)">同步 CMDB</el-button>
+            <el-button v-if="canManage" link type="danger" size="small" @click="confirmDeleteEnv(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -263,16 +266,62 @@
           </el-select>
         </el-form-item>
         <el-form-item label="账号名称" required><el-input v-model="credForm.name" placeholder="例如 prod-aliyun" /></el-form-item>
-        <el-form-item label="AccessKey ID"><el-input v-model="credForm.access_key_id" /></el-form-item>
-        <el-form-item label="AccessKey Secret"><el-input v-model="credForm.access_key_secret" type="password" show-password :placeholder="credForm.id ? '留空保持不变' : ''" /></el-form-item>
+        <el-form-item label="AccessKey ID"><el-input v-model="credForm.access_key_id" style="width:100%" /></el-form-item>
+        <el-form-item label="AccessKey Secret"><el-input v-model="credForm.access_key_secret" type="password" show-password style="width:100%" :placeholder="credForm.id ? '留空保持不变' : ''" /></el-form-item>
         <el-form-item v-if="credForm.provider === 'huawei'" label="Project ID"><el-input v-model="credForm.project_id" placeholder="华为云项目 ID" /></el-form-item>
-        <el-form-item label="默认区域"><el-input v-model="credForm.default_region" :placeholder="defaultRegionHint" /></el-form-item>
-        <el-form-item label="Demo 模式"><el-switch v-model="credForm.demo_mode" active-text="启用" inactive-text="停用" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="credForm.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="credFormVisible = false">取消</el-button>
         <el-button type="primary" :loading="savingCred" @click="saveCredential">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 云环境表单弹窗 -->
+    <el-dialog v-model="envFormVisible" :title="envForm.id ? '编辑云环境' : '新增云环境'" width="600px" append-to-body>
+      <el-form :model="envForm" label-width="110px">
+        <el-form-item label="云账号" required>
+          <el-select v-model="envForm.credential" filterable placeholder="选择云账号" style="width:100%">
+            <el-option v-for="c in credentials" :key="c.id" :label="`${c.name}（${c.provider_label}）`" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="环境名称" required>
+          <el-input v-model="envForm.name" placeholder="例如 prod-alibaba" />
+        </el-form-item>
+        <el-form-item label="环境编码" required>
+          <el-input v-model="envForm.code" placeholder="例如 prod-alibaba-001（唯一）" />
+        </el-form-item>
+        <el-form-item label="环境类型">
+          <el-select v-model="envForm.environment_type" style="width:100%">
+            <el-option label="生产" value="prod" />
+            <el-option label="测试" value="test" />
+            <el-option label="开发" value="dev" />
+            <el-option label="共享" value="shared" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="区域" required>
+          <el-select v-model="envForm.region" filterable placeholder="选择区域" style="width:100%" :loading="envRegionsLoading" @change="envForm.zone = ''">
+            <el-option v-for="r in envRegionOptions" :key="r.value" :label="r.label || r.value" :value="r.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="可用区">
+          <el-select v-model="envForm.zone" filterable clearable placeholder="选择可用区" style="width:100%">
+            <el-option v-for="z in envZoneOptions" :key="z.value" :label="z.label || z.value" :value="z.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="业务线">
+          <el-input v-model="envForm.business_line" placeholder="例如 pay / trade" />
+        </el-form-item>
+        <el-form-item label="负责人">
+          <el-input v-model="envForm.owner" placeholder="环境负责人" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="envForm.description" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="envFormVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingEnv" @click="saveEnv">保存</el-button>
       </template>
     </el-dialog>
 
@@ -327,7 +376,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Service, RefreshRight, Plus, Box, Collection, Coin, Share, Tickets, TrendCharts, Connection } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
@@ -336,9 +385,10 @@ import CmdbRequestsPanel from '@/components/cmdb/CmdbRequestsPanel.vue'
 import {
   getCloudCredentials, createCloudCredential, updateCloudCredential, deleteCloudCredential,
   testCloudConnection, syncCloudAll,
-  getCloudEnvironments, syncCloudEnvironment, syncCloudCmdb,
+  getCloudEnvironments, createCloudEnvironment, updateCloudEnvironment, deleteCloudEnvironment, syncCloudEnvironment, syncCloudCmdb,
   getCloudAssets, getCloudOverview, getCloudCatalog,
 } from '@/api/modules/multicloud'
+import { getIaCRegions } from '@/api/modules/iac'
 import { getConfigItems, updateConfigItem, getCITypes, getResourceNodeTree, getCmdbDashboard } from '@/api/modules/cmdb'
 
 const activeTab = ref('credentials')
@@ -371,8 +421,20 @@ const ciTypeOptions = ref([])
 const resourceTree = ref([])
 
 const credFormVisible = ref(false)
-const credForm = reactive({ id: null, provider: 'aliyun', name: '', access_key_id: '', access_key_secret: '', project_id: '', default_region: '', demo_mode: false, description: '' })
+const credForm = reactive({ id: null, provider: 'aliyun', name: '', access_key_id: '', access_key_secret: '', project_id: '', description: '' })
 const savingCred = ref(false)
+
+const envFormVisible = ref(false)
+const envForm = reactive({ id: null, credential: null, name: '', code: '', environment_type: 'prod', region: '', zone: '', business_line: '', owner: '', description: '' })
+const savingEnv = ref(false)
+const envRegions = ref({ regions: [], zones: {} })
+const envRegionsLoading = ref(false)
+
+const envRegionOptions = computed(() => envRegions.value.regions || [])
+const envZoneOptions = computed(() => {
+  const zones = envRegions.value.zones || {}
+  return zones[envForm.region] || []
+})
 
 const mainTabs = [
   { key: 'credentials', label: '云账号', icon: Service },
@@ -398,11 +460,6 @@ const summaryCards = computed(() => [
   { label: '云资源', value: overview.value.stats?.asset_count ?? assets.value.length, tone: 'success-tone' },
   { label: '月成本(万)', value: formatWan(overview.value.stats?.monthly_cost), tone: 'danger-tone' },
 ])
-
-const defaultRegionHint = computed(() => {
-  const meta = catalog.value[credForm.provider]
-  return meta ? `默认 ${meta.default_region}` : ''
-})
 
 const filteredAssets = computed(() => {
   const keyword = assetKeyword.value.trim().toLowerCase()
@@ -554,9 +611,9 @@ async function fetchCmdbMeta() {
 
 function openCredForm(row) {
   if (!row) {
-    Object.assign(credForm, { id: null, provider: 'aliyun', name: '', access_key_id: '', access_key_secret: '', project_id: '', default_region: '', demo_mode: false, description: '' })
+    Object.assign(credForm, { id: null, provider: 'aliyun', name: '', access_key_id: '', access_key_secret: '', project_id: '', description: '' })
   } else {
-    Object.assign(credForm, { id: row.id, provider: row.provider, name: row.name, access_key_id: row.access_key_id, access_key_secret: '', project_id: row.project_id, default_region: row.default_region, demo_mode: row.demo_mode, description: row.description })
+    Object.assign(credForm, { id: row.id, provider: row.provider, name: row.name, access_key_id: row.access_key_id, access_key_secret: '', project_id: row.project_id, description: row.description })
   }
   credFormVisible.value = true
 }
@@ -565,7 +622,7 @@ async function saveCredential() {
   if (!credForm.name) { ElMessage.warning('请填写账号名称'); return }
   savingCred.value = true
   try {
-    const payload = { provider: credForm.provider, name: credForm.name, access_key_id: credForm.access_key_id, default_region: credForm.default_region, project_id: credForm.project_id, demo_mode: credForm.demo_mode, description: credForm.description }
+    const payload = { provider: credForm.provider, name: credForm.name, access_key_id: credForm.access_key_id, project_id: credForm.project_id, description: credForm.description }
     if (credForm.access_key_secret) payload.access_key_secret = credForm.access_key_secret
     if (credForm.id) { await updateCloudCredential(credForm.id, payload); ElMessage.success('云账号已更新') } else { await createCloudCredential(payload); ElMessage.success('云账号已创建') }
     credFormVisible.value = false
@@ -584,10 +641,91 @@ async function testConnection(row) {
 async function syncAccount(row) {
   try {
     ElMessage.info(`正在同步 ${row.name} 的云环境资源...`)
-    await syncCloudAll(row.id)
-    ElMessage.success('同步完成')
+    const response = await syncCloudAll(row.id)
+    const result = response.result || {}
+    const successCount = result.success_count ?? 0
+    const total = result.count ?? 0
+    if (result.success) {
+      ElMessage.success(result.message || `同步完成，成功 ${successCount}/${total} 个云环境`)
+    } else if (total === 0) {
+      ElMessage.warning('该账号未配置云环境，请先在「云环境」tab 创建云环境后再同步')
+    } else {
+      ElMessage.warning(result.message || `同步完成，成功 ${successCount}/${total} 个云环境，请检查失败任务`)
+    }
     fetchCredentials(); fetchOverview()
   } catch (e) { /* 拦截器已提示 */ }
+}
+
+async function loadEnvRegions(provider, credentialId) {
+  if (!provider) return
+  envRegionsLoading.value = true
+  try {
+    const data = await getIaCRegions({ provider, live: 1, credential_id: credentialId })
+    envRegions.value = { regions: data.regions || [], zones: data.zones || {} }
+  } catch (e) {
+    envRegions.value = { regions: [], zones: {} }
+  } finally {
+    envRegionsLoading.value = false
+  }
+}
+
+watch(() => envForm.credential, (cid) => {
+  const found = credentials.value.find((c) => c.id === cid)
+  envForm.region = ''
+  envForm.zone = ''
+  loadEnvRegions(found ? found.provider : '', found ? found.id : null)
+})
+
+function openEnvForm(row) {
+  if (!row) {
+    if (!credentials.value.length) {
+      ElMessage.warning('请先在「云账号」tab 创建云账号，再新增云环境')
+      return
+    }
+    Object.assign(envForm, { id: null, credential: null, name: '', code: '', environment_type: 'prod', region: '', zone: '', business_line: '', owner: '', description: '' })
+  } else {
+    Object.assign(envForm, {
+      id: row.id,
+      credential: row.credential || row.credential_id,
+      name: row.name,
+      code: row.code,
+      environment_type: row.environment_type || 'prod',
+      region: row.region,
+      zone: row.zone,
+      business_line: row.business_line,
+      owner: row.owner,
+      description: row.description,
+    })
+  }
+  envFormVisible.value = true
+}
+
+async function saveEnv() {
+  if (!envForm.credential) { ElMessage.warning('请选择云账号'); return }
+  if (!envForm.name) { ElMessage.warning('请填写环境名称'); return }
+  if (!envForm.code) { ElMessage.warning('请填写环境编码'); return }
+  if (!envForm.region) { ElMessage.warning('请填写区域'); return }
+  savingEnv.value = true
+  try {
+    if (envForm.id) {
+      await updateCloudEnvironment(envForm.id, envForm)
+      ElMessage.success('云环境已更新')
+    } else {
+      await createCloudEnvironment(envForm)
+      ElMessage.success('云环境已创建')
+    }
+    envFormVisible.value = false
+    fetchEnvironments(); fetchCredentials()
+  } catch (e) { /* 拦截器已提示 */ } finally { savingEnv.value = false }
+}
+
+async function confirmDeleteEnv(row) {
+  try {
+    await ElMessageBox.confirm(`确定删除云环境「${row.name}」吗？`, '删除确认', { type: 'warning' })
+    await deleteCloudEnvironment(row.id)
+    ElMessage.success('云环境已删除')
+    fetchEnvironments(); fetchCredentials()
+  } catch (e) { /* 取消或错误 */ }
 }
 
 async function syncEnvironment(row) {

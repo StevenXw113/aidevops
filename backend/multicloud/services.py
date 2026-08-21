@@ -420,8 +420,6 @@ def _inventory_for_environment(environment):
         raise CloudAdapterError(f'No SDK adapter configured for provider {environment.credential.provider}.')
 
     rows = adapter.fetch_inventory(environment)
-    if not rows:
-        raise CloudAdapterError(f'{provider_label(environment.credential.provider)} SDK returned no inventory data.')
 
     return rows, {
         'sync_mode': 'sdk',
@@ -510,15 +508,18 @@ def sync_credential_environments(credential, operator=''):
     environments = list(credential.environments.all())
     tasks = [sync_environment_inventory(environment, operator=operator, task_type='inventory') for environment in environments]
     success_count = sum(1 for task in tasks if task.status == 'success')
+    if not environments:
+        message = '该账号尚未配置云环境，请先在云环境中创建环境后再同步。'
+    elif success_count == len(tasks):
+        message = f'同步完成，成功 {success_count}/{len(tasks)} 个云环境。'
+    else:
+        message = f'同步完成，成功 {success_count}/{len(tasks)} 个云环境，请检查失败任务。'
     return {
         'credential': credential.name,
         'count': len(tasks),
         'success_count': success_count,
-        'message': (
-            f'Finished {success_count}/{len(tasks)} environment sync tasks.'
-            if tasks
-            else 'No environments found for this credential.'
-        ),
+        'success': success_count > 0 and success_count == len(tasks),
+        'message': message,
         'tasks': [task.id for task in tasks],
     }
 

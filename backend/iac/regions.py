@@ -25,18 +25,19 @@ def _static_provider_regions(provider: str) -> dict:
     }
 
 
-def get_provider_regions(provider: str, prefer_live: bool = True) -> dict:
+def get_provider_regions(provider: str, prefer_live: bool = True, credential_id: int | None = None) -> dict:
     """Return regions and availability zones for a provider.
 
     Args:
         provider: cloud provider id (aliyun / tencent / huaweicloud / aws).
         prefer_live: whether to try the live cloud API first.
+        credential_id: optional cloud credential id to use for the live call.
 
     Returns:
         Dict with ``regions``, ``zones`` and ``source`` (``live`` or ``static``).
     """
     if prefer_live:
-        live = _live_provider_regions(provider)
+        live = _live_provider_regions(provider, credential_id=credential_id)
         if live:
             return live
     return _static_provider_regions(provider)
@@ -57,12 +58,14 @@ def regions_for_all_providers(prefer_live: bool = True) -> dict:
     }
 
 
-def _live_provider_regions(provider: str) -> dict | None:
-    credential = CloudCredential.objects.filter(
+def _live_provider_regions(provider: str, credential_id: int | None = None) -> dict | None:
+    queryset = CloudCredential.objects.filter(
         provider=provider,
-        auth_mode='sdk',
         demo_mode=False,
-    ).exclude(access_key_id='').exclude(access_key_secret='').order_by('id').first()
+    ).exclude(auth_mode='demo').exclude(access_key_id='').exclude(access_key_secret='')
+    if credential_id:
+        queryset = queryset.filter(id=credential_id)
+    credential = queryset.order_by('id').first()
     if not credential:
         return None
     adapter = get_cloud_adapter(credential)
